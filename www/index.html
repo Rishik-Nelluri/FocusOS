@@ -878,19 +878,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 
                 <!-- SECURITY PIN SETTINGS -->
                 <div style="background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r3);padding:20px;margin-bottom:20px;">
-                    <div style="font-family:var(--ui);font-size:15px;font-weight:700;color:var(--g);margin-bottom:12px;">🔒 Security Access Control</div>
-                    <div class="fgrid" style="align-items:center;margin-bottom:16px;">
-                        <div>
-                            <div style="font-family:var(--mono);font-size:11px;color:var(--t1);margin-bottom:4px;">Enable Lock Screen on Startup</div>
-                            <div style="font-family:var(--mono);font-size:10px;color:var(--t3);">Require Security PIN/Password after opening app</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <label style="position:relative;display:inline-block;width:46px;height:24px;cursor:pointer;">
-                                <input type="checkbox" id="set-lock-toggle" checked onchange="toggleLockSetting()" style="opacity:0;width:0;height:0;"/>
-                                <span id="set-lock-slider" style="position:absolute;inset:0;background:var(--bg3);border:1px solid var(--line3);border-radius:24px;transition:.2s;"></span>
-                            </label>
-                        </div>
-                    </div>
+                    <div style="font-family:var(--ui);font-size:15px;font-weight:700;color:var(--g);margin-bottom:12px;">🔒 Master Access PIN &amp; Security</div>
+                    <div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:14px;">Update your Master PIN required on startup and for locking the app screen. Default PIN: <b>1234</b></div>
                     <div class="frow" style="max-width:500px;gap:8px;">
                         <input type="password" id="set-new-pin" placeholder="Enter new Master PIN/Password" style="flex:1;" />
                         <button class="btn bp" onclick="saveNewPin()">Update PIN</button>
@@ -1170,6 +1159,7 @@ async function persist(){
   setSS('saving');
   try{
     if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
+    DB.settings.lockEnabled = true;
     localStorage.setItem('fos', JSON.stringify(DB));
     if(syncKey){
       if(firebaseDbRef){
@@ -1273,11 +1263,10 @@ function applyCloudData(data){
   }
 
   isRemoteUpdating = true;
-  const existingSettings = DB.settings || {pin:'1234', lockEnabled:true};
+  const currentPin = (DB.settings && DB.settings.pin) ? DB.settings.pin : '1234';
   DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[]}, data);
-  DB.settings = Object.assign({pin:'1234', lockEnabled:true}, existingSettings, data.settings || {});
-  // Enforce lockEnabled to true by default if not explicitly set to false
-  if(DB.settings.lockEnabled === undefined) DB.settings.lockEnabled = true;
+  DB.settings = Object.assign({pin: currentPin, lockEnabled: true}, data.settings || {});
+  DB.settings.lockEnabled = true;
   localStorage.setItem('fos', JSON.stringify(DB));
 
   if(!isTyping){
@@ -1335,7 +1324,8 @@ async function loadData(){
     }
   }catch(e){}
   if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
-  if(DB.settings.lockEnabled === undefined) DB.settings.lockEnabled = true;
+  DB.settings.lockEnabled = true;
+  if(!DB.settings.pin) DB.settings.pin = '1234';
   if(!DB.passwords) DB.passwords = [];
   initRealtimeCloudSync();
 }
@@ -1768,7 +1758,7 @@ function dlFile(name,data,type){const a=document.createElement('a');a.href=URL.c
 function expJSON(){dlFile('focus_os_backup_'+TDK+'.json',JSON.stringify(DB,null,2),'application/json');}
 function expNotes(){const notes=DB.notes||[];let md='# Focus OS Notes\n\n';notes.forEach(n=>{md+='## '+(n.title||'Untitled')+'\n\n'+(n.body||'')+'\n\n---\n\n';});dlFile('focus_notes_'+TDK+'.md',md,'text/markdown');}
 function impJSON(){document.getElementById('imp-file').click();}
-function doImp(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(confirm('Replace all current data with this backup?')){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]},d);sched();refreshCurrentView();}}catch(err){alert('Invalid file.');}};r.readAsText(f);}
+function doImp(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(confirm('Replace all current data with this backup?')){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]},d);DB.settings.lockEnabled = true;sched();refreshCurrentView();}}catch(err){alert('Invalid file.');}};r.readAsText(f);}
 function renderExport(){
   const el=document.getElementById('exp-stats');
   if(!el)return;
@@ -1786,16 +1776,7 @@ function togglePassForm(){
 }
 
 function renderSettingsPage(){
-  const toggle = document.getElementById('set-lock-toggle');
-  const isEnabled = !DB.settings || DB.settings.lockEnabled !== false;
-  if(toggle) toggle.checked = isEnabled;
   renderPasswordVaultList();
-}
-
-function toggleLockSetting(){
-  if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
-  DB.settings.lockEnabled = document.getElementById('set-lock-toggle').checked;
-  sched();
 }
 
 function saveNewPin(){
@@ -1804,11 +1785,12 @@ function saveNewPin(){
   if(!val) return;
   if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
   DB.settings.pin = val;
+  DB.settings.lockEnabled = true;
   sched();
   inp.value = '';
   const msg = document.getElementById('pin-update-msg');
   if(msg){
-    msg.textContent = '✔ Security PIN updated successfully!';
+    msg.textContent = '✔ Master PIN updated successfully!';
     msg.style.display = 'block';
     setTimeout(() => { msg.style.display = 'none'; }, 3000);
   }
@@ -1922,8 +1904,19 @@ document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key===' '){e.preventDefault();openQC();}
 });
 
-// INIT WITH ANIMATED SPLASH SCREEN & LOCK SCREEN
+// INIT WITH ANIMATED SPLASH SCREEN & MANDATORY LOCK SCREEN
 (async()=>{
+  // ENSURE LOCK SCREEN IS DISPLAYED FLEX AND APP IS DISPLAYED NONE IMMEDIATELY BEFORE ANYTHING RUNS
+  const ls = document.getElementById('lock-screen');
+  const app = document.getElementById('app');
+  if(ls){
+    ls.classList.remove('unlocked');
+    ls.style.display = 'flex';
+  }
+  if(app){
+    app.style.display = 'none';
+  }
+
   await loadData();
   const fill = document.querySelector('.ld-fill');
   const txt = document.getElementById('ld-txt');
@@ -1947,18 +1940,13 @@ document.addEventListener('keydown',e=>{
         setTimeout(() => { ld.style.display = 'none'; }, 450);
       }
 
-      // Check Security Lock Screen Enabled State
-      const isLockEnabled = !DB.settings || DB.settings.lockEnabled !== false;
-      const ls = document.getElementById('lock-screen');
-      const app = document.getElementById('app');
-
-      if(isLockEnabled && ls){
+      // MANDATORY SECURITY LOCK ON STARTUP
+      if(ls){
         ls.classList.remove('unlocked');
         ls.style.display = 'flex';
-        if(app) app.style.display = 'none';
-      } else {
-        if(ls) ls.style.display = 'none';
-        if(app) app.style.display = 'flex';
+      }
+      if(app){
+        app.style.display = 'none';
       }
 
       renderDash();renderTTSB();buildTCal();pomRender();updateNotifUI();
