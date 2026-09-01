@@ -879,7 +879,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <!-- SECURITY PIN SETTINGS -->
                 <div style="background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r3);padding:20px;margin-bottom:20px;">
                     <div style="font-family:var(--ui);font-size:15px;font-weight:700;color:var(--g);margin-bottom:12px;">🔒 Master Access PIN &amp; Security</div>
-                    <div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:14px;">Update your Master PIN required on startup and for locking the app screen. Default PIN: <b>1234</b></div>
+                    <div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:14px;">Update your Master PIN required on startup, backgrounding, and locking the app screen. Default PIN: <b>1234</b></div>
                     <div class="frow" style="max-width:500px;gap:8px;">
                         <input type="password" id="set-new-pin" placeholder="Enter new Master PIN/Password" style="flex:1;" />
                         <button class="btn bp" onclick="saveNewPin()">Update PIN</button>
@@ -1029,6 +1029,23 @@ function lockAppNow(){
   }
   document.getElementById('app').style.display = 'none';
 }
+
+// AUTOMATIC BACKGROUND & TAB SWITCH LOCKING
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    lockAppNow();
+  }
+});
+
+try {
+  if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
+    window.Capacitor.Plugins.App.addListener('appStateChange', (state) => {
+      if(!state.isActive){
+        lockAppNow();
+      }
+    });
+  }
+} catch(e){}
 
 // WEB AUDIO API SYNTHESIZED SOUND CHIME
 let audioCtx = null;
