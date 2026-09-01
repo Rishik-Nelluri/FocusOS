@@ -346,12 +346,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   text-transform:uppercase;
 }
 
-/* APP LOCK SCREEN OVERLAY */
+/* APP LOCK SCREEN OVERLAY - FLEX BY DEFAULT FOR HIGH SECURITY */
 #lock-screen{
   position:fixed;
   inset:0;
   background:radial-gradient(circle at center, rgba(0,255,163,0.08), transparent 75%), #05080c;
-  display:none;
+  display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
@@ -886,7 +886,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                         </div>
                         <div style="text-align:right;">
                             <label style="position:relative;display:inline-block;width:46px;height:24px;cursor:pointer;">
-                                <input type="checkbox" id="set-lock-toggle" onchange="toggleLockSetting()" style="opacity:0;width:0;height:0;"/>
+                                <input type="checkbox" id="set-lock-toggle" checked onchange="toggleLockSetting()" style="opacity:0;width:0;height:0;"/>
                                 <span id="set-lock-slider" style="position:absolute;inset:0;background:var(--bg3);border:1px solid var(--line3);border-radius:24px;transition:.2s;"></span>
                             </label>
                         </div>
@@ -1276,6 +1276,8 @@ function applyCloudData(data){
   const existingSettings = DB.settings || {pin:'1234', lockEnabled:true};
   DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[]}, data);
   DB.settings = Object.assign({pin:'1234', lockEnabled:true}, existingSettings, data.settings || {});
+  // Enforce lockEnabled to true by default if not explicitly set to false
+  if(DB.settings.lockEnabled === undefined) DB.settings.lockEnabled = true;
   localStorage.setItem('fos', JSON.stringify(DB));
 
   if(!isTyping){
@@ -1333,6 +1335,7 @@ async function loadData(){
     }
   }catch(e){}
   if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
+  if(DB.settings.lockEnabled === undefined) DB.settings.lockEnabled = true;
   if(!DB.passwords) DB.passwords = [];
   initRealtimeCloudSync();
 }
@@ -1784,7 +1787,7 @@ function togglePassForm(){
 
 function renderSettingsPage(){
   const toggle = document.getElementById('set-lock-toggle');
-  const isEnabled = DB.settings && DB.settings.lockEnabled !== false;
+  const isEnabled = !DB.settings || DB.settings.lockEnabled !== false;
   if(toggle) toggle.checked = isEnabled;
   renderPasswordVaultList();
 }
@@ -1947,12 +1950,15 @@ document.addEventListener('keydown',e=>{
       // Check Security Lock Screen Enabled State
       const isLockEnabled = !DB.settings || DB.settings.lockEnabled !== false;
       const ls = document.getElementById('lock-screen');
+      const app = document.getElementById('app');
+
       if(isLockEnabled && ls){
         ls.classList.remove('unlocked');
         ls.style.display = 'flex';
-        document.getElementById('app').style.display = 'none';
+        if(app) app.style.display = 'none';
       } else {
-        document.getElementById('app').style.display = 'flex';
+        if(ls) ls.style.display = 'none';
+        if(app) app.style.display = 'flex';
       }
 
       renderDash();renderTTSB();buildTCal();pomRender();updateNotifUI();
