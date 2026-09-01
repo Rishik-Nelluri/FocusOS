@@ -1038,6 +1038,7 @@ function lockAppNow(){
     ls.classList.remove('unlocked');
     ls.style.display = 'flex';
   }
+  document.getElementById('app').style.display = 'none';
 }
 
 // WEB AUDIO API SYNTHESIZED SOUND CHIME
@@ -1168,6 +1169,7 @@ function setSS(s){
 async function persist(){
   setSS('saving');
   try{
+    if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
     localStorage.setItem('fos', JSON.stringify(DB));
     if(syncKey){
       if(firebaseDbRef){
@@ -1271,7 +1273,9 @@ function applyCloudData(data){
   }
 
   isRemoteUpdating = true;
-  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]}, data);
+  const existingSettings = DB.settings || {pin:'1234', lockEnabled:true};
+  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[]}, data);
+  DB.settings = Object.assign({pin:'1234', lockEnabled:true}, existingSettings, data.settings || {});
   localStorage.setItem('fos', JSON.stringify(DB));
 
   if(!isTyping){
@@ -1322,7 +1326,11 @@ function showSyncMsg(msg){
 async function loadData(){
   try{
     const ls=localStorage.getItem('fos');
-    if(ls){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]},JSON.parse(ls));}
+    if(ls){
+      const parsed = JSON.parse(ls);
+      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[]}, parsed);
+      DB.settings = Object.assign({pin:'1234', lockEnabled:true}, parsed.settings || {});
+    }
   }catch(e){}
   if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
   if(!DB.passwords) DB.passwords = [];
@@ -1937,10 +1945,12 @@ document.addEventListener('keydown',e=>{
       }
 
       // Check Security Lock Screen Enabled State
-      const isLockEnabled = DB.settings && DB.settings.lockEnabled !== false;
-      if(isLockEnabled){
-        const ls = document.getElementById('lock-screen');
-        if(ls) ls.style.display = 'flex';
+      const isLockEnabled = !DB.settings || DB.settings.lockEnabled !== false;
+      const ls = document.getElementById('lock-screen');
+      if(isLockEnabled && ls){
+        ls.classList.remove('unlocked');
+        ls.style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
       } else {
         document.getElementById('app').style.display = 'flex';
       }
