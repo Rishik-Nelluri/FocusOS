@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Focus OS</string>
+    <string name="title_activity_main">Focus OS</string>
+    <string name="package_name">com.focusos.app</string>
+    <string name="custom_url_scheme">com.focusos.app</string>
+</resources>
