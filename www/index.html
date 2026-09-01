@@ -346,6 +346,105 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   text-transform:uppercase;
 }
 
+/* APP LOCK SCREEN OVERLAY */
+#lock-screen{
+  position:fixed;
+  inset:0;
+  background:radial-gradient(circle at center, rgba(0,255,163,0.08), transparent 75%), #05080c;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  z-index:99998;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  transition:opacity 0.35s ease, transform 0.35s ease;
+}
+#lock-screen.unlocked{
+  opacity:0;
+  transform:scale(1.05);
+  pointer-events:none;
+}
+.lock-card{
+  background:rgba(12, 16, 23, 0.95);
+  border:1px solid rgba(255, 255, 255, 0.12);
+  border-radius:24px;
+  padding:32px 28px;
+  width:320px;
+  max-width:90vw;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  box-shadow:0 20px 60px rgba(0,0,0,0.9), 0 0 30px rgba(0,255,163,0.1);
+}
+.lock-icon{
+  font-size:42px;
+  margin-bottom:10px;
+  filter:drop-shadow(0 0 15px rgba(0,255,163,0.4));
+}
+.lock-title{
+  font-family:var(--mono);
+  font-size:18px;
+  font-weight:700;
+  color:var(--g);
+  letter-spacing:-0.5px;
+  margin-bottom:4px;
+}
+.lock-sub{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--t3);
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  margin-bottom:20px;
+}
+.pin-display{
+  width:100%;
+  background:var(--bg3);
+  border:1px solid var(--line2);
+  border-radius:12px;
+  padding:12px;
+  font-family:var(--mono);
+  font-size:24px;
+  letter-spacing:0.35em;
+  text-align:center;
+  color:var(--g);
+  margin-bottom:18px;
+  outline:none;
+}
+.keypad{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+  width:100%;
+}
+.kp-btn{
+  background:var(--bg2);
+  border:1px solid var(--line2);
+  border-radius:14px;
+  padding:14px 0;
+  font-family:var(--mono);
+  font-size:16px;
+  font-weight:600;
+  color:var(--t1);
+  cursor:pointer;
+  display:flex;
+  align-items:center;justify-content:center;
+  transition:all 0.12s ease;
+}
+.kp-btn:hover{background:var(--bg4);border-color:var(--g);color:var(--g);}
+.kp-btn:active{transform:scale(0.95);}
+.kp-btn.action{color:var(--amber);font-size:14px;}
+.kp-btn.submit{background:var(--g);color:#060a0e;border-color:var(--g);font-size:16px;}
+.kp-btn.submit:hover{background:#1affa9;box-shadow:0 0 15px rgba(0,255,163,0.4);}
+.shake{animation:shakeAnim 0.35s ease-in-out;}
+@keyframes shakeAnim{
+  0%, 100%{transform:translateX(0);}
+  20%, 60%{transform:translateX(-10px);}
+  40%, 80%{transform:translateX(10px);}
+}
+
 /* PERFECTED MOBILE VIEWPORT, NOTCH CLEARANCE & OVERFLOW FIXES */
 @media (max-width: 768px) {
   html, body, #app, #shell, #main {
@@ -354,7 +453,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   }
   #tb{
     position:relative;
-    z-index:9999!important; /* Above overlay so right side top bar stays bright */
+    z-index:9999!important;
     padding-top: max(env(safe-area-inset-top), 24px);
     height: calc(52px + max(env(safe-area-inset-top), 24px));
     padding-left: 12px;
@@ -432,7 +531,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     top:calc(52px + max(env(safe-area-inset-top), 24px));
   }
 
-  /* Guarantee main page scroll content completely clears floating bottom navigation bar */
   .page{
     padding:16px 14px 100px!important;
     max-width:100%!important;
@@ -441,7 +539,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   }
   .ph-title{font-size:22px;}
   
-  /* Critical Grid Min-width Overrides to Prevent Card Overflow */
   .dash-cols, .det-layout, .tlay, .fgrid{
     grid-template-columns:1fr!important;
     width:100%!important;
@@ -466,10 +563,36 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </style>
 </head>
 <body>
+<!-- STARTUP SPLASH ANIMATION -->
 <div id="ld">
   <div class="ld-logo">focus_os<span style="color:var(--t4)">█</span></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
   <div class="ld-txt" id="ld-txt">INITIALIZING CLOUD SYNC...</div>
+</div>
+
+<!-- LOCK SCREEN OVERLAY -->
+<div id="lock-screen">
+  <div class="lock-card" id="lock-card-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">focus_os</div>
+    <div class="lock-sub">SECURITY ACCESS CONTROL</div>
+    <input type="password" id="pin-input" class="pin-display" placeholder="••••" readonly />
+    <div class="keypad">
+      <button class="kp-btn" onclick="kpPress('1')">1</button>
+      <button class="kp-btn" onclick="kpPress('2')">2</button>
+      <button class="kp-btn" onclick="kpPress('3')">3</button>
+      <button class="kp-btn" onclick="kpPress('4')">4</button>
+      <button class="kp-btn" onclick="kpPress('5')">5</button>
+      <button class="kp-btn" onclick="kpPress('6')">6</button>
+      <button class="kp-btn" onclick="kpPress('7')">7</button>
+      <button class="kp-btn" onclick="kpPress('8')">8</button>
+      <button class="kp-btn" onclick="kpPress('9')">9</button>
+      <button class="kp-btn action" onclick="kpClear()">⌫</button>
+      <button class="kp-btn" onclick="kpPress('0')">0</button>
+      <button class="kp-btn submit" onclick="kpSubmit()">🔓</button>
+    </div>
+    <div id="lock-msg" style="font-family:var(--mono);font-size:10px;color:var(--red);margin-top:12px;height:14px;display:none;"></div>
+  </div>
 </div>
 
 <div id="sb-overlay" onclick="toggleSB()"></div>
@@ -485,6 +608,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <span id="pom-tb" onclick="nav('pomodoro')" title="Pomodoro">⏱ <span id="pom-tb-time">25:00</span></span>
             <button class="btn bg bs" onclick="openQC()" title="Quick Capture (Ctrl+Space)">⚡ capture</button>
             <div style="display:flex;align-items:center;gap:6px;cursor:pointer;" onclick="nav('export')" title="Click for Sync Settings"><div class="sled" id="sled"></div><span style="font-family:var(--mono);font-size:10px;color:var(--t3);" id="slbl">synced</span></div>
+            <button class="btn bg bs" onclick="lockAppNow()" title="Lock App Screen">🔒 lock</button>
             <div class="clock" id="clk"></div>
         </div>
     </div>
@@ -514,6 +638,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <div class="ni" onclick="nav('pomodoro')" id="nav-pomodoro"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" /></svg>pomodoro</div>
                 <div class="ni" onclick="nav('streak')" id="nav-streak"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /></svg>streak</div>
                 <div class="ni" onclick="nav('export')" id="nav-export"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>export &amp; sync</div>
+            </div>
+            <!-- SETTINGS SECTION AT BOTTOM -->
+            <div class="sb-sec" style="margin-top:auto;">
+                <div class="sb-lbl">system</div>
+                <div class="ni" onclick="nav('settings')" id="nav-settings"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>settings &amp; vault</div>
             </div>
             <div class="sb-foot">
                 <div class="sb-save"><div class="sled" id="sled2"></div><span id="slbl2" style="font-family:var(--mono);font-size:10px;color:var(--t3);">cloud active</span></div>
@@ -743,6 +872,60 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <div id="exp-stats" style="margin-top:18px;font-family:var(--mono);font-size:10px;color:var(--t3);padding:12px;background:var(--bg1);border:1px solid var(--line);border-radius:var(--r2);"></div>
                 <input type="file" id="imp-file" accept=".json" style="display:none;" onchange="doImp(event)" />
             </div>
+
+            <!-- SETTINGS & PASSWORDS VAULT PAGE -->
+            <div class="page" id="page-settings">
+                <div class="ph"><div><div class="ph-ey">system</div><div class="ph-title">Settings &amp; Passwords Vault</div><div class="ph-sub">security lock controls and encrypted credential manager</div></div><div class="ph-right"><button class="btn bd bs" onclick="lockAppNow()">🔒 Lock App Now</button></div></div>
+                
+                <!-- SECURITY PIN SETTINGS -->
+                <div style="background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r3);padding:20px;margin-bottom:20px;">
+                    <div style="font-family:var(--ui);font-size:15px;font-weight:700;color:var(--g);margin-bottom:12px;">🔒 Security Access Control</div>
+                    <div class="fgrid" style="align-items:center;margin-bottom:16px;">
+                        <div>
+                            <div style="font-family:var(--mono);font-size:11px;color:var(--t1);margin-bottom:4px;">Enable Lock Screen on Startup</div>
+                            <div style="font-family:var(--mono);font-size:10px;color:var(--t3);">Require Security PIN/Password after opening app</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <label style="position:relative;display:inline-block;width:46px;height:24px;cursor:pointer;">
+                                <input type="checkbox" id="set-lock-toggle" onchange="toggleLockSetting()" style="opacity:0;width:0;height:0;"/>
+                                <span id="set-lock-slider" style="position:absolute;inset:0;background:var(--bg3);border:1px solid var(--line3);border-radius:24px;transition:.2s;"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="frow" style="max-width:500px;gap:8px;">
+                        <input type="password" id="set-new-pin" placeholder="Enter new Master PIN/Password" style="flex:1;" />
+                        <button class="btn bp" onclick="saveNewPin()">Update PIN</button>
+                    </div>
+                    <div id="pin-update-msg" style="font-family:var(--mono);font-size:10px;color:var(--g);margin-top:8px;display:none;"></div>
+                </div>
+
+                <!-- PASSWORDS VAULT -->
+                <div style="background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r3);padding:20px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+                        <div>
+                            <div style="font-family:var(--ui);font-size:15px;font-weight:700;color:var(--g);">🔑 Passwords &amp; Credentials Vault</div>
+                            <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px;">Store your login credentials, API keys, and passwords safely</div>
+                        </div>
+                        <button class="btn bp bs" onclick="togglePassForm()">+ add password</button>
+                    </div>
+
+                    <!-- ADD PASSWORD FORM -->
+                    <div class="aform" id="add-pass-form">
+                        <div class="aform-title">// new_credential.vault()</div>
+                        <div class="fgrid" style="margin-bottom:10px;">
+                            <div class="fgrp"><div class="flbl">Service / App Name</div><input type="text" id="pv-name" placeholder="e.g. GitHub, Google, Server SSH..." /></div>
+                            <div class="fgrp"><div class="flbl">Category</div><input type="text" id="pv-cat" placeholder="e.g. Work, Personal, API Key..." /></div>
+                            <div class="fgrp"><div class="flbl">Username / Email</div><input type="text" id="pv-user" placeholder="e.g. user@email.com" /></div>
+                            <div class="fgrp"><div class="flbl">Password / Key</div><input type="password" id="pv-pass" placeholder="••••••••••••" /></div>
+                        </div>
+                        <div class="fgrp" style="margin-bottom:12px;"><div class="flbl">Notes / URL (optional)</div><input type="text" id="pv-notes" placeholder="e.g. 2FA recovery code, portal link..." /></div>
+                        <div class="frow"><button class="btn bp" onclick="addPasswordEntry()">Save to Vault</button><button class="btn bg" onclick="togglePassForm()">Cancel</button></div>
+                    </div>
+
+                    <!-- VAULT LIST -->
+                    <div id="pass-vault-list"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -764,9 +947,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
             Notes
         </div>
-        <div class="mn-item" id="mn-export" onclick="nav('export')">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-            Sync
+        <div class="mn-item" id="mn-settings" onclick="nav('settings')">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Vault
         </div>
     </div>
 </div>
@@ -787,7 +970,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </div>
 
 <script>
-let DB = {subjects:[], entries:{}, tasks:{}, timetables:[], notes:[]};
+let DB = {subjects:[], entries:{}, tasks:{}, timetables:[], notes:[], settings:{pin:'1234',lockEnabled:true}, passwords:[]};
 let saveTimer = null;
 let syncKey = localStorage.getItem('fos_sync_key') || ('FOCUS-' + Math.floor(1000 + Math.random() * 9000));
 localStorage.setItem('fos_sync_key', syncKey);
@@ -798,7 +981,67 @@ let firebaseDbRef = null;
 let sseSource = null;
 let isRemoteUpdating = false;
 
-// 1. WEB AUDIO API SYNTHESIZED SOUND CHIME
+// LOCK SCREEN & SECURITY LOGIC
+let enteredPin = '';
+
+function kpPress(digit){
+  if(enteredPin.length < 12){
+    enteredPin += digit;
+    updatePinDisplay();
+  }
+}
+
+function kpClear(){
+  enteredPin = enteredPin.slice(0, -1);
+  updatePinDisplay();
+}
+
+function updatePinDisplay(){
+  const inp = document.getElementById('pin-input');
+  if(inp) inp.value = '•'.repeat(enteredPin.length);
+}
+
+function kpSubmit(){
+  const activePin = (DB.settings && DB.settings.pin) ? DB.settings.pin : '1234';
+  const msg = document.getElementById('lock-msg');
+  const box = document.getElementById('lock-card-box');
+
+  if(enteredPin === activePin){
+    if(msg) msg.style.display = 'none';
+    const ls = document.getElementById('lock-screen');
+    if(ls){
+      ls.classList.add('unlocked');
+      setTimeout(() => { ls.style.display = 'none'; }, 350);
+    }
+    document.getElementById('app').style.display = 'flex';
+    enteredPin = '';
+    updatePinDisplay();
+  } else {
+    if(msg){
+      msg.textContent = '❌ INCORRECT PIN / PASSWORD';
+      msg.style.display = 'block';
+    }
+    if(box){
+      box.classList.remove('shake');
+      void box.offsetWidth;
+      box.classList.add('shake');
+    }
+    enteredPin = '';
+    updatePinDisplay();
+  }
+}
+
+function lockAppNow(){
+  enteredPin = '';
+  updatePinDisplay();
+  const ls = document.getElementById('lock-screen');
+  if(ls){
+    ls.classList.remove('unlocked');
+    ls.style.display = 'flex';
+  }
+}
+
+// WEB AUDIO API SYNTHESIZED SOUND CHIME
 let audioCtx = null;
 function getAudioCtx(){
   if(!audioCtx){
@@ -817,7 +1060,7 @@ function playChime(){
     const ctx = getAudioCtx();
     if(!ctx) return;
     const now = ctx.currentTime;
-    const notes = [659.25, 880.00, 1108.73, 1318.51]; // E5, A5, C#6, E6 ascending chord
+    const notes = [659.25, 880.00, 1108.73, 1318.51];
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -835,11 +1078,10 @@ function playChime(){
   }
 }
 
-// 2. NATIVE & WEB PUSH NOTIFICATIONS HELPERS
+// NATIVE & WEB PUSH NOTIFICATIONS HELPERS
 let notifPermissionGranted = false;
 
 async function reqNotifPermission(){
-  // 1. Try Capacitor LocalNotifications
   try {
     if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
       const res = await window.Capacitor.Plugins.LocalNotifications.requestPermissions();
@@ -852,7 +1094,6 @@ async function reqNotifPermission(){
     }
   } catch(e){}
 
-  // 2. Fallback to Web Notification API
   if('Notification' in window){
     const perm = await Notification.requestPermission();
     if(perm === 'granted'){
@@ -880,7 +1121,6 @@ function updateNotifUI(){
 }
 
 async function sendAppNotification(title, body){
-  // 1. Try Capacitor LocalNotifications
   try {
     if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
       await window.Capacitor.Plugins.LocalNotifications.schedule({
@@ -895,7 +1135,6 @@ async function sendAppNotification(title, body){
     }
   } catch(e){}
 
-  // 2. Fallback to Web Notification API
   if('Notification' in window && Notification.permission === 'granted'){
     try {
       new Notification(title, {
@@ -927,17 +1166,14 @@ function setSS(s){
   ['slbl','slbl2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});
 }
 
-// Push local modifications to Cloud & Local Storage
 async function persist(){
   setSS('saving');
   try{
     localStorage.setItem('fos', JSON.stringify(DB));
     if(syncKey){
-      // 1. Firebase JS SDK push if available
       if(firebaseDbRef){
         await firebaseDbRef.set(DB);
       } else {
-        // 2. REST API fallback push
         await fetch(`${DB_URL}sync/${encodeURIComponent(syncKey)}.json`, {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
@@ -957,12 +1193,10 @@ function sched(){
   saveTimer=setTimeout(persist,400);
 }
 
-// Setup Instant Real-time Cloud Listeners (WebSockets + SSE fallback)
 function initRealtimeCloudSync(){
   if(!syncKey) return;
   setSS('saving');
 
-  // Attempt Firebase SDK listener first
   try {
     if(typeof firebase !== 'undefined'){
       if(!firebaseApp){
@@ -1038,7 +1272,7 @@ function applyCloudData(data){
   }
 
   isRemoteUpdating = true;
-  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[]}, data);
+  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]}, data);
   localStorage.setItem('fos', JSON.stringify(DB));
 
   if(!isTyping){
@@ -1089,8 +1323,10 @@ function showSyncMsg(msg){
 async function loadData(){
   try{
     const ls=localStorage.getItem('fos');
-    if(ls){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[]},JSON.parse(ls));}
+    if(ls){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]},JSON.parse(ls));}
   }catch(e){}
+  if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
+  if(!DB.passwords) DB.passwords = [];
   initRealtimeCloudSync();
 }
 
@@ -1108,7 +1344,7 @@ function tick(){const n=new Date();document.getElementById('clk').textContent=pa
 setInterval(tick,1000);tick();
 document.getElementById('sb-dt').textContent=TODAY.toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric'});
 
-// Mobile View Navigation
+// Navigation
 let activePage = 'dashboard';
 function nav(name){
   activePage = name;
@@ -1144,6 +1380,7 @@ function refreshCurrentView(){
   if(activePage==='pomodoro'){pomRender();updateNotifUI();}
   if(activePage==='streak')renderStreak();
   if(activePage==='export')renderExport();
+  if(activePage==='settings')renderSettingsPage();
 }
 
 // DASHBOARD
@@ -1285,7 +1522,7 @@ function delG(k,i){const e=getEntry(curSub,k);e.goals.splice(i,1);setEntry(curSu
 function addL(k){const lb=document.getElementById('ll-inp').value.trim();const url=document.getElementById('lu-inp').value.trim();if(!url)return;const e=getEntry(curSub,k);e.links=e.links||[];e.links.push({label:lb||url,url});setEntry(curSub,k,e);document.getElementById('ll-inp').value='';document.getElementById('lu-inp').value='';renderEP(new Date(k+'T00:00:00'),k);}
 function delL(k,i){const e=getEntry(curSub,k);e.links.splice(i,1);setEntry(curSub,k,e);renderEP(new Date(k+'T00:00:00'),k);}
 
-// NOTES (WITH TRASH DELETE BUTTON ON EVERY NOTE ITEM)
+// NOTES
 let curNoteId=null;let nSave=null;
 function showNotesListMobile(){
   if(window.innerWidth <= 768){
@@ -1521,7 +1758,7 @@ function dlFile(name,data,type){const a=document.createElement('a');a.href=URL.c
 function expJSON(){dlFile('focus_os_backup_'+TDK+'.json',JSON.stringify(DB,null,2),'application/json');}
 function expNotes(){const notes=DB.notes||[];let md='# Focus OS Notes\n\n';notes.forEach(n=>{md+='## '+(n.title||'Untitled')+'\n\n'+(n.body||'')+'\n\n---\n\n';});dlFile('focus_notes_'+TDK+'.md',md,'text/markdown');}
 function impJSON(){document.getElementById('imp-file').click();}
-function doImp(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(confirm('Replace all current data with this backup?')){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[]},d);sched();refreshCurrentView();}}catch(err){alert('Invalid file.');}};r.readAsText(f);}
+function doImp(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(confirm('Replace all current data with this backup?')){DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],settings:{pin:'1234',lockEnabled:true},passwords:[]},d);sched();refreshCurrentView();}}catch(err){alert('Invalid file.');}};r.readAsText(f);}
 function renderExport(){
   const el=document.getElementById('exp-stats');
   if(!el)return;
@@ -1530,10 +1767,143 @@ function renderExport(){
   el.textContent='// '+DB.subjects.length+' subjects · '+d+' sessions · '+h.toFixed(1)+'h total · '+(DB.notes||[]).length+' notes · '+(DB.timetables||[]).length+' timetables';
 }
 
+// SETTINGS & PASSWORDS VAULT LOGIC
+let addPassFormOpen = false;
+function togglePassForm(){
+  addPassFormOpen = !addPassFormOpen;
+  document.getElementById('add-pass-form').classList.toggle('open', addPassFormOpen);
+  if(addPassFormOpen) setTimeout(() => document.getElementById('pv-name').focus(), 50);
+}
+
+function renderSettingsPage(){
+  const toggle = document.getElementById('set-lock-toggle');
+  const isEnabled = DB.settings && DB.settings.lockEnabled !== false;
+  if(toggle) toggle.checked = isEnabled;
+  renderPasswordVaultList();
+}
+
+function toggleLockSetting(){
+  if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
+  DB.settings.lockEnabled = document.getElementById('set-lock-toggle').checked;
+  sched();
+}
+
+function saveNewPin(){
+  const inp = document.getElementById('set-new-pin');
+  const val = inp.value.trim();
+  if(!val) return;
+  if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
+  DB.settings.pin = val;
+  sched();
+  inp.value = '';
+  const msg = document.getElementById('pin-update-msg');
+  if(msg){
+    msg.textContent = '✔ Security PIN updated successfully!';
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+  }
+}
+
+function addPasswordEntry(){
+  const name = document.getElementById('pv-name').value.trim();
+  const cat = document.getElementById('pv-cat').value.trim() || 'General';
+  const user = document.getElementById('pv-user').value.trim();
+  const pass = document.getElementById('pv-pass').value.trim();
+  const notes = document.getElementById('pv-notes').value.trim();
+
+  if(!name || !pass){
+    alert('App Name and Password are required.');
+    return;
+  }
+
+  if(!DB.passwords) DB.passwords = [];
+  DB.passwords.unshift({
+    id: Date.now(),
+    name, cat, user, pass, notes,
+    updated: Date.now()
+  });
+  sched();
+
+  ['pv-name','pv-cat','pv-user','pv-pass','pv-notes'].forEach(id => document.getElementById(id).value = '');
+  togglePassForm();
+  renderPasswordVaultList();
+}
+
+function delPasswordEntry(id){
+  if(!confirm('Delete this password entry?')) return;
+  DB.passwords = DB.passwords.filter(p => p.id !== id);
+  sched();
+  renderPasswordVaultList();
+}
+
+function togglePassVisibility(id){
+  const el = document.getElementById('pv-val-' + id);
+  const btn = document.getElementById('pv-eye-' + id);
+  if(!el) return;
+  if(el.dataset.shown === 'true'){
+    el.textContent = '••••••••••••';
+    el.dataset.shown = 'false';
+    if(btn) btn.textContent = '👁';
+  } else {
+    const entry = DB.passwords.find(p => p.id === id);
+    if(entry){
+      el.textContent = entry.pass;
+      el.dataset.shown = 'true';
+      if(btn) btn.textContent = '🙈';
+    }
+  }
+}
+
+function copyVaultText(text, label){
+  navigator.clipboard.writeText(text).then(() => {
+    showSyncMsg(`📋 Copied ${label} to clipboard!`);
+  });
+}
+
+function renderPasswordVaultList(){
+  const wrap = document.getElementById('pass-vault-list');
+  if(!wrap) return;
+  const list = DB.passwords || [];
+  if(!list.length){
+    wrap.innerHTML = '<div class="empty-st" style="padding:24px 0;"><div class="empty-ico">🔑</div>No stored passwords in vault yet</div>';
+    return;
+  }
+  let html = '';
+  list.forEach(p => {
+    html += `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:14px 16px;margin-top:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-family:var(--ui);font-size:14px;font-weight:700;color:var(--t1);">${p.name}</div>
+          <span class="ttc-pill">${p.cat}</span>
+        </div>
+        <button class="del-btn" onclick="delPasswordEntry(${p.id})">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:var(--mono);font-size:11px;margin-bottom:8px;">
+        <div style="background:var(--bg3);padding:8px 10px;border-radius:var(--r);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:var(--t3);font-size:9.5px;text-transform:uppercase;">User:</span>
+          <span style="color:var(--t1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;">${p.user || '—'}</span>
+          ${p.user ? `<button class="btn bg bs" style="padding:2px 6px;font-size:9px;" onclick="copyVaultText('${(p.user||'').replace(/'/g,"\\'")}', 'Username')">📋</button>` : ''}
+        </div>
+        <div style="background:var(--bg3);padding:8px 10px;border-radius:var(--r);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:var(--t3);font-size:9.5px;text-transform:uppercase;">Pass:</span>
+          <span id="pv-val-${p.id}" data-shown="false" style="color:var(--g);font-weight:700;">••••••••••••</span>
+          <div style="display:flex;gap:4px;">
+            <button class="btn bg bs" id="pv-eye-${p.id}" style="padding:2px 6px;font-size:9px;" onclick="togglePassVisibility(${p.id})">👁</button>
+            <button class="btn bg bs" style="padding:2px 6px;font-size:9px;" onclick="copyVaultText('${(p.pass||'').replace(/'/g,"\\'")}', 'Password')">📋</button>
+          </div>
+        </div>
+      </div>
+      ${p.notes ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg1);padding:6px 10px;border-radius:var(--r);">${p.notes}</div>` : ''}
+    </div>`;
+  });
+  wrap.innerHTML = html;
+}
+
 // HOTKEYS
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.activeElement.id==='ns-inp')addSubject();
   if(e.key==='Enter'&&document.activeElement.id==='ntt-inp')addTT();
+  if(e.key==='Enter'&&document.activeElement.id==='pin-input')kpSubmit();
   if((e.metaKey||e.ctrlKey)&&e.key==='1'){e.preventDefault();nav('dashboard');}
   if((e.metaKey||e.ctrlKey)&&e.key==='2'){e.preventDefault();nav('subjects');}
   if((e.metaKey||e.ctrlKey)&&e.key==='3'){e.preventDefault();nav('tasks');}
@@ -1542,7 +1912,7 @@ document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key===' '){e.preventDefault();openQC();}
 });
 
-// INIT WITH ANIMATED SPLASH SCREEN
+// INIT WITH ANIMATED SPLASH SCREEN & LOCK SCREEN
 (async()=>{
   await loadData();
   const fill = document.querySelector('.ld-fill');
@@ -1566,7 +1936,16 @@ document.addEventListener('keydown',e=>{
         ld.classList.add('fade-out');
         setTimeout(() => { ld.style.display = 'none'; }, 450);
       }
-      document.getElementById('app').style.display = 'flex';
+
+      // Check Security Lock Screen Enabled State
+      const isLockEnabled = DB.settings && DB.settings.lockEnabled !== false;
+      if(isLockEnabled){
+        const ls = document.getElementById('lock-screen');
+        if(ls) ls.style.display = 'flex';
+      } else {
+        document.getElementById('app').style.display = 'flex';
+      }
+
       renderDash();renderTTSB();buildTCal();pomRender();updateNotifUI();
       try{const{cur}=calcStreak();document.getElementById('streak-val').textContent=cur;}catch(e){}
     }, 300);
