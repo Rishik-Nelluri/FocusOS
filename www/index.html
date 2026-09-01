@@ -1027,15 +1027,20 @@ function lockAppNow(){
     ls.classList.remove('unlocked');
     ls.style.display = 'flex';
   }
-  document.getElementById('app').style.display = 'none';
+  const app = document.getElementById('app');
+  if(app){
+    app.style.display = 'none';
+  }
 }
 
 // AUTOMATIC BACKGROUND & TAB SWITCH LOCKING
 document.addEventListener('visibilitychange', () => {
-  if(document.hidden){
+  if(document.hidden || document.visibilityState === 'hidden'){
     lockAppNow();
   }
 });
+window.addEventListener('blur', () => { lockAppNow(); });
+window.addEventListener('pagehide', () => { lockAppNow(); });
 
 try {
   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
