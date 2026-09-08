@@ -273,7 +273,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .notes-ed{padding:24px 28px;overflow-y:auto;display:flex;flex-direction:column;background:var(--bg);}
 .note-title-inp{font-family:var(--ui);font-size:22px;font-weight:800;background:none;border:none;color:var(--t1);width:100%;margin-bottom:11px;padding:0;outline:none;}
 .note-title-inp::placeholder{color:var(--t4);}.note-title-inp:focus{box-shadow:none;}
-.note-body-inp{font-family:var(--mono);font-size:12px;color:var(--t2);background:none;border:none;flex:1;min-height:280px;line-height:1.9;padding:0;resize:none;outline:none;}
+.note-body-inp{font-family:var(--mono);font-size:12px;color:var(--t2);background:none;border:none;flex:1;min-height:240px;line-height:1.9;padding:0;resize:none;outline:none;}
 .note-body-inp::placeholder{color:var(--t4);}.note-body-inp:focus{box-shadow:none;}
 .note-meta{font-family:var(--mono);font-size:9px;color:var(--t4);margin-bottom:14px;}
 .mobile-back-notes{display:none;margin-bottom:12px;}
@@ -973,7 +973,7 @@ let isRemoteUpdating = false;
 let enteredPin = '';
 
 function kpPress(digit){
-  if(enteredPin.length < 12){
+  if(enteredPin.length < 16){
     enteredPin += digit;
     updatePinDisplay();
   }
@@ -1544,7 +1544,7 @@ function delG(k,i){const e=getEntry(curSub,k);e.goals.splice(i,1);setEntry(curSu
 function addL(k){const lb=document.getElementById('ll-inp').value.trim();const url=document.getElementById('lu-inp').value.trim();if(!url)return;const e=getEntry(curSub,k);e.links=e.links||[];e.links.push({label:lb||url,url});setEntry(curSub,k,e);document.getElementById('ll-inp').value='';document.getElementById('lu-inp').value='';renderEP(new Date(k+'T00:00:00'),k);}
 function delL(k,i){const e=getEntry(curSub,k);e.links.splice(i,1);setEntry(curSub,k,e);renderEP(new Date(k+'T00:00:00'),k);}
 
-// NOTES
+// NOTES & DOCUMENT LINKS
 let curNoteId=null;let nSave=null;
 function showNotesListMobile(){
   if(window.innerWidth <= 768){
@@ -1570,16 +1570,53 @@ function renderNotesList(){
   });
 }
 function openNote(id){
-  curNoteId=id;const n=DB.notes.find(x=>x.id===id);if(!n)return;
+  curNoteId=id;const n=DB.notes.find(x=>x.id==id);if(!n)return;
+  if(!n.links) n.links = [];
   renderNotesList();
   showNotesEditorMobile();
   const ed=document.getElementById('notes-ed');
-  ed.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><button class="btn bg bs mobile-back-notes" onclick="showNotesListMobile()">‹ back to notes list</button><button class="btn bd bs" onclick="delNote('${id}')">🗑 delete note</button></div><div class="note-meta">// last edited ${new Date(n.updated).toLocaleString('en-IN')}</div><input class="note-title-inp" id="nt-inp" value="${(n.title||'').replace(/"/g,'&quot;')}" placeholder="Note title..."/><textarea class="note-body-inp" id="nb-inp" placeholder="// start writing...">${n.body||''}</textarea><div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);"><button class="btn bd bs" onclick="delNote('${id}')">🗑 delete note</button></div>`;
+
+  const linksHtml = (n.links||[]).map((l, i) => 
+    `<div class="li" style="margin-bottom:4px;"><a href="${l.url}" target="_blank">🔗 ${l.label || l.url}</a><button class="del-btn" onclick="delNoteLink('${id}',${i})">✕</button></div>`
+  ).join('');
+
+  ed.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><button class="btn bg bs mobile-back-notes" onclick="showNotesListMobile()">‹ back to notes list</button><button class="btn bd bs" onclick="delNote('${id}')">🗑 delete note</button></div><div class="note-meta">// last edited ${new Date(n.updated).toLocaleString('en-IN')}</div><input class="note-title-inp" id="nt-inp" value="${(n.title||'').replace(/"/g,'&quot;')}" placeholder="Note title..."/><textarea class="note-body-inp" id="nb-inp" placeholder="// start writing...">${n.body||''}</textarea>
+  <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line);">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;">🔗 Attached Links &amp; Document URLs</div>
+    <div id="nlinks-wrap">${linksHtml || '<div class="tmuted" style="font-size:10px;">no document links attached</div>'}</div>
+    <div class="larow" style="margin-top:10px;">
+      <input type="text" id="nl-lbl" placeholder="Label (e.g. Research PDF, Spec doc)" />
+      <input type="url" id="nl-url" placeholder="https://... or file:///..." />
+      <button class="btn bp bs" onclick="addNoteLink('${id}')" style="white-space:nowrap;">+ add link</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line);"><button class="btn bd bs" onclick="delNote('${id}')">🗑 delete note</button></div>`;
+  
   document.getElementById('nt-inp').oninput=()=>schedNS(id);
   document.getElementById('nb-inp').oninput=()=>schedNS(id);
 }
-function schedNS(id){clearTimeout(nSave);nSave=setTimeout(()=>{const n=DB.notes.find(x=>x.id===id);if(!n)return;n.title=document.getElementById('nt-inp').value;n.body=document.getElementById('nb-inp').value;n.updated=Date.now();sched();renderNotesList();},600);}
-function newNote(){const n={id:Date.now(),title:'',body:'',updated:Date.now()};DB.notes.push(n);sched();renderNotesList();openNote(n.id);setTimeout(()=>document.getElementById('nt-inp')&&document.getElementById('nt-inp').focus(),50);}
+function addNoteLink(id){
+  const n = DB.notes.find(x => x.id == id);
+  if(!n) return;
+  const lbl = document.getElementById('nl-lbl').value.trim();
+  const url = document.getElementById('nl-url').value.trim();
+  if(!url) return;
+  if(!n.links) n.links = [];
+  n.links.push({ label: lbl || url, url: url });
+  n.updated = Date.now();
+  sched();
+  openNote(id);
+}
+function delNoteLink(id, index){
+  const n = DB.notes.find(x => x.id == id);
+  if(!n || !n.links) return;
+  n.links.splice(index, 1);
+  n.updated = Date.now();
+  sched();
+  openNote(id);
+}
+function schedNS(id){clearTimeout(nSave);nSave=setTimeout(()=>{const n=DB.notes.find(x=>x.id==id);if(!n)return;n.title=document.getElementById('nt-inp').value;n.body=document.getElementById('nb-inp').value;n.updated=Date.now();sched();renderNotesList();},600);}
+function newNote(){const n={id:Date.now(),title:'',body:'',links:[],updated:Date.now()};DB.notes.push(n);sched();renderNotesList();openNote(n.id);setTimeout(()=>document.getElementById('nt-inp')&&document.getElementById('nt-inp').focus(),50);}
 function delNote(id){
   const n = DB.notes.find(x => x.id == id);
   const title = n ? (n.title || 'Untitled') : 'this note';
@@ -1592,7 +1629,7 @@ function delNote(id){
   renderNotesList();
 }
 
-// TASKS
+// TASKS WITH NOTES / DETAILS
 let tY=TODAY.getFullYear(),tM=TODAY.getMonth(),tSDk=TDK;
 function getTasks(k){return DB.tasks[k]||[];}function setTasks(k,a){DB.tasks[k]=a;sched();}
 function buildTCal(){
@@ -1605,8 +1642,52 @@ function buildTCal(){
   if(tSDk)renderTP(new Date(tSDk+'T00:00:00'),tSDk);
 }
 function tcm(dir){tM+=dir;if(tM>11){tM=0;tY++;}if(tM<0){tM=11;tY--;}buildTCal();}
-function renderTP(dt,k){const ts=getTasks(k);const wrap=document.getElementById('tew');const done=ts.filter(t=>t.done).length;const tis=ts.map((t,i)=>`<div class="ti ${t.done?'done':''}"><div class="tcb ${t.done?'chk':''}" onclick="togT('${k}',${i})">${t.done?'✓':''}</div><span class="tt">${t.name}</span><button class="del-btn" onclick="delT('${k}',${i})">✕</button></div>`).join('');wrap.innerHTML=`<div class="sel-dt">${fmtS(dt)}</div><div class="sel-ds">${ts.length?`${done}/${ts.length} done`:'// no tasks set'}</div>${tis||'<div class="nt">// nothing planned. add a task.</div>'}<div class="div"></div><div class="frow"><input type="text" id="nt-inp2" placeholder="+ new task..."/><button class="btn bp bs" onclick="addT('${k}')" style="white-space:nowrap;">add</button></div>`;setTimeout(()=>{const inp=document.getElementById('nt-inp2');if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')addT(k);});},0);}
-function addT(k){const inp=document.getElementById('nt-inp2');const n=inp.value.trim();if(!n)return;const ts=getTasks(k);ts.push({name:n,done:false});setTasks(k,ts);inp.value='';renderTP(new Date(k+'T00:00:00'),k);buildTCal();}
+function renderTP(dt,k){
+  const ts=getTasks(k);const wrap=document.getElementById('tew');const done=ts.filter(t=>t.done).length;
+  const tis=ts.map((t,i)=>{
+    const hasNote = t.note && t.note.trim().length > 0;
+    return `<div class="ti ${t.done?'done':''}" style="flex-direction:column;align-items:stretch;gap:4px;">
+      <div style="display:flex;align-items:center;gap:9px;">
+        <div class="tcb ${t.done?'chk':''}" onclick="togT('${k}',${i})">${t.done?'✓':''}</div>
+        <span class="tt" style="flex:1;">${t.name}</span>
+        <button class="del-btn" style="font-size:11px;" onclick="toggleTNoteForm('${k}',${i})" title="Add/Edit Task Note">📝</button>
+        <button class="del-btn" onclick="delT('${k}',${i})">✕</button>
+      </div>
+      ${hasNote ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding-left:25px;margin-top:2px;">📝 ${t.note}</div>` : ''}
+      <div id="tnote-form-${k}-${i}" style="display:none;padding-left:25px;margin-top:4px;">
+        <div class="frow">
+          <input type="text" id="tnote-inp-${k}-${i}" placeholder="Add note or detail for this task..." value="${(t.note||'').replace(/"/g,'&quot;')}" style="font-size:10.5px;padding:4px 8px;" />
+          <button class="btn bp bs" style="padding:4px 8px;font-size:9.5px;" onclick="saveTNote('${k}',${i})">save</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML=`<div class="sel-dt">${fmtS(dt)}</div><div class="sel-ds">${ts.length?`${done}/${ts.length} done`:'// no tasks set'}</div>${tis||'<div class="nt">// nothing planned. add a task.</div>'}<div class="div"></div><div class="frow"><input type="text" id="nt-inp2" placeholder="+ new task..."/><button class="btn bp bs" onclick="addT('${k}')" style="white-space:nowrap;">add</button></div>`;
+  setTimeout(()=>{const inp=document.getElementById('nt-inp2');if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')addT(k);});},0);
+}
+function toggleTNoteForm(k, i){
+  const el = document.getElementById(`tnote-form-${k}-${i}`);
+  if(!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen){
+    const inp = document.getElementById(`tnote-inp-${k}-${i}`);
+    if(inp) inp.focus();
+  }
+}
+function saveTNote(k, i){
+  const inp = document.getElementById(`tnote-inp-${k}-${i}`);
+  if(!inp) return;
+  const ts = getTasks(k);
+  if(ts[i]){
+    ts[i].note = inp.value.trim();
+    setTasks(k, ts);
+    renderTP(new Date(k+'T00:00:00'), k);
+    if(allTasksOpen) renderAllTasks();
+  }
+}
+function addT(k){const inp=document.getElementById('nt-inp2');const n=inp.value.trim();if(!n)return;const ts=getTasks(k);ts.push({name:n,done:false,note:''});setTasks(k,ts);inp.value='';renderTP(new Date(k+'T00:00:00'),k);buildTCal();}
 function togT(k,i){const ts=getTasks(k);ts[i].done=!ts[i].done;setTasks(k,ts);renderTP(new Date(k+'T00:00:00'),k);}
 function delT(k,i){const ts=getTasks(k);ts.splice(i,1);setTasks(k,ts);renderTP(new Date(k+'T00:00:00'),k);buildTCal();}
 
@@ -1635,7 +1716,24 @@ function renderAllTasks(){
         <div class="sel-dt" style="margin-bottom:0;">${fmtS(dt)}${isToday?' <span style="color:var(--g);font-size:10px;font-family:var(--mono);">// today</span>':''}</div>
         <div class="sel-ds" style="margin-bottom:0;">${done}/${ts.length} done</div>
       </div>
-      ${ts.map((t,i)=>`<div class="ti ${t.done?'done':''}"><div class="tcb ${t.done?'chk':''}" onclick="togAllT('${k}',${i})">${t.done?'✓':''}</div><span class="tt">${t.name}</span><button class="del-btn" onclick="delAllT('${k}',${i})">✕</button></div>`).join('')}
+      ${ts.map((t,i)=>{
+        const hasNote = t.note && t.note.trim().length > 0;
+        return `<div class="ti ${t.done?'done':''}" style="flex-direction:column;align-items:stretch;gap:4px;">
+          <div style="display:flex;align-items:center;gap:9px;">
+            <div class="tcb ${t.done?'chk':''}" onclick="togAllT('${k}',${i})">${t.done?'✓':''}</div>
+            <span class="tt" style="flex:1;">${t.name}</span>
+            <button class="del-btn" style="font-size:11px;" onclick="toggleTNoteForm('${k}',${i})" title="Add/Edit Task Note">📝</button>
+            <button class="del-btn" onclick="delAllT('${k}',${i})">✕</button>
+          </div>
+          ${hasNote ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding-left:25px;margin-top:2px;">📝 ${t.note}</div>` : ''}
+          <div id="tnote-form-${k}-${i}" style="display:none;padding-left:25px;margin-top:4px;">
+            <div class="frow">
+              <input type="text" id="tnote-inp-${k}-${i}" placeholder="Add note or detail for this task..." value="${(t.note||'').replace(/"/g,'&quot;')}" style="font-size:10.5px;padding:4px 8px;" />
+              <button class="btn bp bs" style="padding:4px 8px;font-size:9.5px;" onclick="saveTNote('${k}',${i})">save</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
   });
   wrap.innerHTML=`<div class="sel-ds" style="margin-bottom:14px;">// ${doneAll}/${totalAll} tasks done across ${keys.length} day${keys.length===1?'':'s'}</div>${h}`;
@@ -1705,8 +1803,8 @@ function closeQC(e){if(!e||e.target===document.getElementById('qco'))document.ge
 function qcT(t){qcType=t;['task','note'].forEach(x=>{const el=document.getElementById('qct-'+x);if(el){el.style.background=x===t?'var(--gd)':'none';el.style.color=x===t?'var(--g)':'var(--t3)';el.style.borderColor=x===t?'rgba(0,255,163,.2)':'var(--line2)';}});}
 function qcSave(){
   const inp=document.getElementById('qci');const v=inp.value.trim();if(!v)return;
-  if(qcType==='task'){const ts=getTasks(TDK);ts.push({name:v,done:false});setTasks(TDK,ts);buildTCal();}
-  else{const n={id:Date.now(),title:v,body:'',updated:Date.now()};DB.notes.push(n);sched();renderNotesList();}
+  if(qcType==='task'){const ts=getTasks(TDK);ts.push({name:v,done:false,note:''});setTasks(TDK,ts);buildTCal();}
+  else{const n={id:Date.now(),title:v,body:'',links:[],updated:Date.now()};DB.notes.push(n);sched();renderNotesList();}
   qcLog.unshift({t:qcType,v});inp.value='';
   const l=document.getElementById('qcl');if(l)l.innerHTML=qcLog.slice(0,3).map(x=>`<div style="font-family:var(--mono);font-size:10px;color:var(--t3);padding:4px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;"><span style="color:${x.t==='task'?'var(--g)':'var(--blue)'};min-width:28px;">${x.t}</span>${x.v}</div>`).join('');
 }
@@ -1913,11 +2011,32 @@ function renderPasswordVaultList(){
   wrap.innerHTML = html;
 }
 
-// HOTKEYS
-document.addEventListener('keydown',e=>{
+// HOTKEYS & PHYSICAL KEYBOARD PASSWORD UNLOCK
+document.addEventListener('keydown', e => {
+  const ls = document.getElementById('lock-screen');
+  const isLocked = ls && ls.style.display !== 'none' && !ls.classList.contains('unlocked');
+  
+  if (isLocked) {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      kpSubmit();
+      return;
+    }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      kpClear();
+      return;
+    }
+    if (e.key.length === 1) {
+      e.preventDefault();
+      kpPress(e.key);
+      return;
+    }
+  }
+
   if(e.key==='Enter'&&document.activeElement.id==='ns-inp')addSubject();
   if(e.key==='Enter'&&document.activeElement.id==='ntt-inp')addTT();
-  if(e.key==='Enter'&&document.activeElement.id==='pin-input')kpSubmit();
   if((e.metaKey||e.ctrlKey)&&e.key==='1'){e.preventDefault();nav('dashboard');}
   if((e.metaKey||e.ctrlKey)&&e.key==='2'){e.preventDefault();nav('subjects');}
   if((e.metaKey||e.ctrlKey)&&e.key==='3'){e.preventDefault();nav('tasks');}
