@@ -641,6 +641,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <div class="sb-sub-list" id="nav-tt-list"></div>
             </div>
             <div class="sb-sec">
+                <div class="sb-lbl">finance &amp; budget</div>
+                <div class="ni" onclick="nav('finance')" id="nav-finance"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0 0c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>💸 expenses</div>
+            </div>
+            <div class="sb-sec">
                 <div class="sb-lbl">tools</div>
                 <div class="ni" onclick="nav('pomodoro')" id="nav-pomodoro"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" /></svg>pomodoro</div>
                 <div class="ni" onclick="nav('streak')" id="nav-streak"><svg class="ni-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /></svg>streak</div>
@@ -880,6 +884,125 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                 <input type="file" id="imp-file" accept=".json" style="display:none;" onchange="doImp(event)" />
             </div>
 
+            <!-- FINANCE & EXPENSES PAGE -->
+            <div class="page" id="page-finance">
+                <div class="ph">
+                    <div>
+                        <div class="ph-ey">finance &amp; budget</div>
+                        <div class="ph-title">Expense Tracker</div>
+                        <div class="ph-sub">Log expenses, manage monthly budget &amp; track spending</div>
+                    </div>
+                    <div class="ph-right">
+                        <button class="btn bp bs" onclick="toggleExpForm()">+ log expense</button>
+                    </div>
+                </div>
+
+                <!-- SUMMARY TILES -->
+                <div class="dgrid" style="margin-bottom:20px;">
+                    <div class="stile">
+                        <div class="stile-lbl">spent this month</div>
+                        <div class="stile-val" id="exp-m-total" style="color:var(--g)">₹0</div>
+                        <div class="stile-sub" id="exp-m-sub">0 transactions</div>
+                        <div class="stile-ico">💸</div>
+                    </div>
+                    <div class="stile">
+                        <div class="stile-lbl">spent today</div>
+                        <div class="stile-val" id="exp-d-total" style="color:var(--amber)">₹0</div>
+                        <div class="stile-sub" id="exp-d-sub">today's total</div>
+                        <div class="stile-ico">📅</div>
+                    </div>
+                    <div class="stile">
+                        <div class="stile-lbl">monthly budget</div>
+                        <div class="stile-val" id="exp-b-rem" style="color:var(--blue)">₹0</div>
+                        <div class="stile-sub" id="exp-b-sub">limit: ₹0</div>
+                        <div class="stile-ico">📊</div>
+                    </div>
+                </div>
+
+                <!-- BUDGET SETTINGS CARD -->
+                <div style="background:var(--bg1);border:1px solid var(--line);border-radius:var(--r3);padding:18px 20px;margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                        <div style="font-family:var(--ui);font-size:14px;font-weight:700;color:var(--t1);">🎯 Monthly Budget Goal</div>
+                        <div class="frow" style="gap:8px;max-width:320px;">
+                            <input type="number" id="exp-budget-inp" placeholder="Target budget (e.g. 10000)" style="font-size:11px;" />
+                            <button class="btn bp bs" onclick="saveMonthlyBudget()">Set Budget</button>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg3);height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px;">
+                        <div id="exp-budget-bar" style="width:0%;height:100%;background:linear-gradient(90deg,var(--g),var(--amber));transition:width 0.3s;"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--t3);" id="exp-budget-txt">
+                        <span>Progress: 0%</span>
+                        <span>Remaining: ₹0</span>
+                    </div>
+                </div>
+
+                <!-- ADD EXPENSE FORM -->
+                <div class="aform" id="add-exp-form" style="margin-bottom:20px;">
+                    <div class="aform-title">// log_new_expense()</div>
+                    <div class="fgrid" style="margin-bottom:10px;">
+                        <div class="fgrp">
+                            <div class="flbl">Title / Item</div>
+                            <input type="text" id="exp-title" placeholder="e.g. Swiggy Lunch, AWS, Metro Pass..." />
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Amount (₹)</div>
+                            <input type="number" id="exp-amount" min="0" step="1" placeholder="0" />
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Category</div>
+                            <select id="exp-cat" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                                <option value="Food &amp; Drinks">🍔 Food &amp; Drinks</option>
+                                <option value="Subscriptions &amp; Tools">💻 Subscriptions &amp; Tools</option>
+                                <option value="Shopping &amp; Gadgets">🛍️ Shopping &amp; Gadgets</option>
+                                <option value="Travel &amp; Fuel">🚕 Travel &amp; Fuel</option>
+                                <option value="College &amp; Books">📚 College &amp; Books</option>
+                                <option value="Bills &amp; Rent">⚡ Bills &amp; Rent</option>
+                                <option value="Entertainment">🎬 Entertainment</option>
+                                <option value="Misc">📦 Misc</option>
+                            </select>
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Payment Method</div>
+                            <select id="exp-method" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                                <option value="UPI / GPay">📱 UPI / GPay</option>
+                                <option value="Credit Card">💳 Credit Card</option>
+                                <option value="Debit Card">🏦 Debit Card</option>
+                                <option value="Cash">💵 Cash</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fgrid" style="margin-bottom:12px;">
+                        <div class="fgrp">
+                            <div class="flbl">Date</div>
+                            <input type="date" id="exp-date" />
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Notes (optional)</div>
+                            <input type="text" id="exp-notes" placeholder="e.g. split with friend, bill ref..." />
+                        </div>
+                    </div>
+                    <div class="frow">
+                        <button class="btn bp" onclick="addExpenseEntry()">Log Expense</button>
+                        <button class="btn bg" onclick="toggleExpForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="dash-cols">
+                    <div>
+                        <!-- CATEGORY BREAKDOWN -->
+                        <div class="slbl">spending breakdown by category</div>
+                        <div style="background:var(--bg1);border:1px solid var(--line);border-radius:var(--r3);padding:18px;margin-bottom:16px;" id="exp-cat-breakdown">
+                        </div>
+                    </div>
+                    <div>
+                        <!-- EXPENSE HISTORY LOG -->
+                        <div class="slbl">recent transactions</div>
+                        <div id="exp-list"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SETTINGS & PASSWORDS VAULT PAGE -->
             <div class="page" id="page-settings">
                 <div class="ph"><div><div class="ph-ey">system</div><div class="ph-title">Settings &amp; Passwords Vault</div><div class="ph-sub">security lock controls and encrypted credential manager</div></div><div class="ph-right"><button class="btn bd bs" onclick="lockAppNow()">🔒 Lock App Now</button></div></div>
@@ -942,6 +1065,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <div class="mn-item" id="mn-notes" onclick="nav('notes')">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
             Notes
+        </div>
+        <div class="mn-item" id="mn-finance" onclick="nav('finance')">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0 0c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Money
         </div>
         <div class="mn-item" id="mn-settings" onclick="nav('settings')">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -1294,7 +1421,8 @@ function applyCloudData(data){
 
   isRemoteUpdating = true;
   const currentPin = (DB.settings && DB.settings.pin) ? DB.settings.pin : '1234';
-  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[]}, data);
+  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[]}, data);
+  if(!DB.expenses) DB.expenses = [];
   DB.settings = Object.assign({pin: currentPin, lockEnabled: true}, data.settings || {});
   DB.settings.lockEnabled = true;
   localStorage.setItem('fos', JSON.stringify(DB));
@@ -1349,7 +1477,8 @@ async function loadData(){
     const ls=localStorage.getItem('fos');
     if(ls){
       const parsed = JSON.parse(ls);
-      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[]}, parsed);
+      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[]}, parsed);
+      if(!DB.expenses) DB.expenses = [];
       DB.settings = Object.assign({pin:'1234', lockEnabled:true}, parsed.settings || {});
     }
   }catch(e){}
@@ -1357,6 +1486,7 @@ async function loadData(){
   DB.settings.lockEnabled = true;
   if(!DB.settings.pin) DB.settings.pin = '1234';
   if(!DB.passwords) DB.passwords = [];
+  if(!DB.expenses) DB.expenses = [];
   initRealtimeCloudSync();
 }
 
@@ -1411,6 +1541,7 @@ function refreshCurrentView(){
   if(activePage==='streak')renderStreak();
   if(activePage==='export')renderExport();
   if(activePage==='settings')renderSettingsPage();
+  if(activePage==='finance')renderFinancePage();
 }
 
 // DASHBOARD
@@ -2017,6 +2148,213 @@ function renderPasswordVaultList(){
     </div>`;
   });
   wrap.innerHTML = html;
+}
+
+// FINANCE & EXPENSES LOGIC
+let addExpFormOpen = false;
+function toggleExpForm(){
+  addExpFormOpen = !addExpFormOpen;
+  const form = document.getElementById('add-exp-form');
+  if(form) form.classList.toggle('open', addExpFormOpen);
+  if(addExpFormOpen){
+    const dInp = document.getElementById('exp-date');
+    if(dInp && !dInp.value) dInp.value = TDK;
+    setTimeout(() => {
+      const tInp = document.getElementById('exp-title');
+      if(tInp) tInp.focus();
+    }, 50);
+  }
+}
+
+function saveMonthlyBudget(){
+  const inp = document.getElementById('exp-budget-inp');
+  if(!inp) return;
+  const val = parseFloat(inp.value) || 0;
+  if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
+  DB.settings.monthlyBudget = val;
+  sched();
+  renderFinancePage();
+  showSyncMsg('🎯 Monthly budget target saved: ₹' + val.toLocaleString('en-IN'));
+}
+
+function addExpenseEntry(){
+  const title = (document.getElementById('exp-title').value || '').trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
+  const category = document.getElementById('exp-cat').value || 'Misc';
+  const method = document.getElementById('exp-method').value || 'UPI / GPay';
+  const date = document.getElementById('exp-date').value || TDK;
+  const notes = (document.getElementById('exp-notes').value || '').trim();
+
+  if(!title || amount <= 0){
+    alert('Please enter a valid expense item title and amount.');
+    return;
+  }
+
+  if(!DB.expenses) DB.expenses = [];
+  DB.expenses.unshift({
+    id: Date.now(),
+    title,
+    amount,
+    category,
+    method,
+    date,
+    notes,
+    created: Date.now()
+  });
+
+  sched();
+
+  ['exp-title','exp-amount','exp-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+
+  toggleExpForm();
+  renderFinancePage();
+}
+
+function delExpenseEntry(id){
+  if(!confirm('Delete this expense transaction?')) return;
+  DB.expenses = (DB.expenses || []).filter(e => e.id !== id);
+  sched();
+  renderFinancePage();
+}
+
+function renderFinancePage(){
+  const expenses = DB.expenses || [];
+  const now = new Date();
+  const curMonthPrefix = `${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+
+  const monthExpenses = expenses.filter(e => (e.date || '').startsWith(curMonthPrefix));
+  const todayExpenses = expenses.filter(e => e.date === TDK);
+
+  const spentThisMonth = monthExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const spentToday = todayExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const monthlyBudget = (DB.settings && DB.settings.monthlyBudget) ? parseFloat(DB.settings.monthlyBudget) : 0;
+
+  // Set Budget Input field value
+  const bInp = document.getElementById('exp-budget-inp');
+  if(bInp && document.activeElement !== bInp){
+    bInp.value = monthlyBudget || '';
+  }
+
+  // Update Tile Values
+  const mTotEl = document.getElementById('exp-m-total');
+  if(mTotEl) mTotEl.textContent = '₹' + spentThisMonth.toLocaleString('en-IN');
+  const mSubEl = document.getElementById('exp-m-sub');
+  if(mSubEl) mSubEl.textContent = `${monthExpenses.length} transactions this month`;
+
+  const dTotEl = document.getElementById('exp-d-total');
+  if(dTotEl) dTotEl.textContent = '₹' + spentToday.toLocaleString('en-IN');
+
+  const bRemEl = document.getElementById('exp-b-rem');
+  const remaining = monthlyBudget - spentThisMonth;
+  if(bRemEl){
+    if(monthlyBudget > 0){
+      bRemEl.textContent = '₹' + (remaining >= 0 ? remaining.toLocaleString('en-IN') : '0');
+      bRemEl.style.color = remaining < 0 ? 'var(--red)' : 'var(--blue)';
+    } else {
+      bRemEl.textContent = '₹0';
+      bRemEl.style.color = 'var(--blue)';
+    }
+  }
+
+  const bSubEl = document.getElementById('exp-b-sub');
+  if(bSubEl){
+    bSubEl.textContent = monthlyBudget > 0 ? `budget target: ₹${monthlyBudget.toLocaleString('en-IN')}` : 'no target set';
+  }
+
+  // Budget Progress Bar
+  const pBar = document.getElementById('exp-budget-bar');
+  const pTxt = document.getElementById('exp-budget-txt');
+  if(pBar && pTxt){
+    if(monthlyBudget > 0){
+      const pct = Math.min(100, Math.round((spentThisMonth / monthlyBudget) * 100));
+      pBar.style.width = pct + '%';
+      if(pct > 90){
+        pBar.style.background = 'var(--red)';
+      } else if(pct > 75){
+        pBar.style.background = 'var(--amber)';
+      } else {
+        pBar.style.background = 'linear-gradient(90deg,var(--g),var(--amber))';
+      }
+      pTxt.innerHTML = `<span>Used: ${pct}% (₹${spentThisMonth.toLocaleString('en-IN')})</span><span>${remaining < 0 ? 'Over budget by ₹' + Math.abs(remaining).toLocaleString('en-IN') : 'Remaining: ₹' + remaining.toLocaleString('en-IN')}</span>`;
+    } else {
+      pBar.style.width = '0%';
+      pTxt.innerHTML = `<span>Progress: 0%</span><span>Set budget goal above</span>`;
+    }
+  }
+
+  // Category Breakdown
+  const catWrap = document.getElementById('exp-cat-breakdown');
+  if(catWrap){
+    if(!monthExpenses.length){
+      catWrap.innerHTML = '<div class="tmuted" style="font-size:10px;">no expenses logged this month</div>';
+    } else {
+      const catTotals = {};
+      monthExpenses.forEach(e => {
+        const cat = e.category || 'Misc';
+        catTotals[cat] = (catTotals[cat] || 0) + (parseFloat(e.amount) || 0);
+      });
+
+      const catColors = {
+        'Food & Drinks': 'var(--g)',
+        'Subscriptions & Tools': 'var(--blue)',
+        'Shopping & Gadgets': 'var(--purple)',
+        'Travel & Fuel': 'var(--amber)',
+        'College & Books': 'var(--pink)',
+        'Bills & Rent': 'var(--red)',
+        'Entertainment': '#ff9f43',
+        'Misc': 'var(--t2)'
+      };
+
+      let catHtml = '';
+      Object.entries(catTotals).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
+        const pct = Math.round((amt / spentThisMonth) * 100);
+        const col = catColors[cat] || 'var(--g)';
+        catHtml += `<div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;margin-bottom:4px;">
+            <span style="color:var(--t1);font-weight:500;">${cat}</span>
+            <span style="color:var(--t2);">₹${amt.toLocaleString('en-IN')} <span style="color:var(--t3);font-size:9.5px;">(${pct}%)</span></span>
+          </div>
+          <div style="background:var(--bg3);height:6px;border-radius:3px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${col};border-radius:3px;"></div>
+          </div>
+        </div>`;
+      });
+      catWrap.innerHTML = catHtml;
+    }
+  }
+
+  // Expense Transactions List
+  const listWrap = document.getElementById('exp-list');
+  if(listWrap){
+    if(!expenses.length){
+      listWrap.innerHTML = '<div class="empty-st" style="padding:20px 0;"><div class="empty-ico">💸</div>No expense entries recorded</div>';
+    } else {
+      let listHtml = '';
+      expenses.slice(0, 30).forEach(e => {
+        listHtml += `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-family:var(--ui);font-size:13px;font-weight:700;color:var(--t1);">${e.title}</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--g);">₹${parseFloat(e.amount).toLocaleString('en-IN')}</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--t3);">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span class="ttc-pill" style="padding:1px 6px;">${e.category}</span>
+              <span style="color:var(--t4);">•</span>
+              <span>${e.method || 'UPI'}</span>
+              <span style="color:var(--t4);">•</span>
+              <span>${e.date}</span>
+            </div>
+            <button class="del-btn" style="width:20px;height:20px;" onclick="delExpenseEntry(${e.id})">✕</button>
+          </div>
+          ${e.notes ? `<div style="font-family:var(--mono);font-size:9.5px;color:var(--t3);margin-top:4px;background:var(--bg1);padding:4px 8px;border-radius:4px;">${e.notes}</div>` : ''}
+        </div>`;
+      });
+      listWrap.innerHTML = listHtml;
+    }
+  }
 }
 
 // HOTKEYS & PHYSICAL KEYBOARD PASSWORD UNLOCK
