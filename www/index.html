@@ -957,7 +957,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
                 <!-- ADD EXPENSE FORM -->
                 <div class="aform" id="add-exp-form" style="margin-bottom:20px;">
-                    <div class="aform-title">// log_new_expense()</div>
+                    <div class="aform-title" id="exp-form-title">// log_new_expense()</div>
                     <div class="fgrid" style="margin-bottom:10px;">
                         <div class="fgrp">
                             <div class="flbl">Title / Item</div>
@@ -1008,14 +1008,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                         </div>
                     </div>
                     <div class="frow">
-                        <button class="btn bp" onclick="addExpenseEntry()">Log Expense</button>
+                        <button class="btn bp" id="exp-submit-btn" onclick="addExpenseEntry()">Log Expense</button>
                         <button class="btn bg" onclick="toggleExpForm()">Cancel</button>
                     </div>
                 </div>
 
                 <!-- ADD INCOME FORM -->
                 <div class="aform" id="add-inc-form" style="margin-bottom:20px;">
-                    <div class="aform-title" style="color:var(--g);">// log_income_or_deposit()</div>
+                    <div class="aform-title" id="inc-form-title" style="color:var(--g);">// log_income_or_deposit()</div>
                     <div class="fgrid" style="margin-bottom:10px;">
                         <div class="fgrp">
                             <div class="flbl">Source / Title</div>
@@ -1053,7 +1053,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                         </div>
                     </div>
                     <div class="frow">
-                        <button class="btn bp" style="background:var(--g);color:#060a0e;" onclick="addIncomeEntry()">Save Income</button>
+                        <button class="btn bp" id="inc-submit-btn" style="background:var(--g);color:#060a0e;" onclick="addIncomeEntry()">Save Income</button>
                         <button class="btn bg" onclick="toggleIncForm()">Cancel</button>
                     </div>
                 </div>
@@ -2264,6 +2264,8 @@ function renderPasswordVaultList(){
 let addExpFormOpen = false;
 let addIncFormOpen = false;
 let addAccFormOpen = false;
+let editingExpenseId = null;
+let editingIncomeId = null;
 let finFilter = 'all'; // 'all', 'exp', 'inc'
 
 function setFinFilter(f){
@@ -2322,9 +2324,21 @@ function populateAccountSelects(){
 }
 
 function toggleExpForm(){
+  if(addExpFormOpen && editingExpenseId !== null){
+    editingExpenseId = null;
+    addExpFormOpen = false;
+    updateFinanceFormVisibility();
+    renderFinancePage();
+    return;
+  }
   addExpFormOpen = !addExpFormOpen;
   addIncFormOpen = false;
   addAccFormOpen = false;
+  editingExpenseId = null;
+  const tEl = document.getElementById('exp-form-title');
+  const bEl = document.getElementById('exp-submit-btn');
+  if(tEl) tEl.textContent = '// log_new_expense()';
+  if(bEl) bEl.textContent = 'Log Expense';
   updateFinanceFormVisibility();
   if(addExpFormOpen){
     populateAccountSelects();
@@ -2338,9 +2352,21 @@ function toggleExpForm(){
 }
 
 function toggleIncForm(){
+  if(addIncFormOpen && editingIncomeId !== null){
+    editingIncomeId = null;
+    addIncFormOpen = false;
+    updateFinanceFormVisibility();
+    renderFinancePage();
+    return;
+  }
   addIncFormOpen = !addIncFormOpen;
   addExpFormOpen = false;
   addAccFormOpen = false;
+  editingIncomeId = null;
+  const tEl = document.getElementById('inc-form-title');
+  const bEl = document.getElementById('inc-submit-btn');
+  if(tEl) tEl.textContent = '// log_income_or_deposit()';
+  if(bEl) bEl.textContent = 'Save Income';
   updateFinanceFormVisibility();
   if(addIncFormOpen){
     populateAccountSelects();
@@ -2386,6 +2412,75 @@ function saveMonthlyBudget(){
   showSyncMsg('🎯 Monthly budget target saved: ₹' + val.toLocaleString('en-IN'));
 }
 
+function editExpenseEntry(id){
+  const exp = (DB.expenses || []).find(e => e.id === id);
+  if(!exp) return;
+
+  if(exp.accountId){
+    const acc = (DB.bankAccounts || []).find(a => a.id === exp.accountId);
+    if(acc){
+      acc.balance = (parseFloat(acc.balance) || 0) + (parseFloat(exp.amount) || 0);
+    }
+  }
+
+  editingExpenseId = id;
+  addExpFormOpen = true;
+  addIncFormOpen = false;
+  addAccFormOpen = false;
+  updateFinanceFormVisibility();
+  populateAccountSelects();
+
+  document.getElementById('exp-title').value = exp.title || '';
+  document.getElementById('exp-amount').value = exp.amount || 0;
+  document.getElementById('exp-cat').value = exp.category || 'Misc';
+  document.getElementById('exp-method').value = exp.method || 'UPI / GPay';
+  document.getElementById('exp-account').value = exp.accountId ? ('acc_' + exp.accountId) : 'none';
+  document.getElementById('exp-date').value = exp.date || TDK;
+  document.getElementById('exp-notes').value = exp.notes || '';
+
+  const tEl = document.getElementById('exp-form-title');
+  const bEl = document.getElementById('exp-submit-btn');
+  if(tEl) tEl.textContent = '// edit_expense_entry()';
+  if(bEl) bEl.textContent = 'Update Expense';
+
+  const form = document.getElementById('add-exp-form');
+  if(form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function editIncomeEntry(id){
+  const inc = (DB.incomes || []).find(i => i.id === id);
+  if(!inc) return;
+
+  if(inc.accountId){
+    const acc = (DB.bankAccounts || []).find(a => a.id === inc.accountId);
+    if(acc){
+      acc.balance = Math.max(0, (parseFloat(acc.balance) || 0) - (parseFloat(inc.amount) || 0));
+    }
+  }
+
+  editingIncomeId = id;
+  addIncFormOpen = true;
+  addExpFormOpen = false;
+  addAccFormOpen = false;
+  updateFinanceFormVisibility();
+  populateAccountSelects();
+
+  document.getElementById('inc-title').value = inc.title || '';
+  document.getElementById('inc-amount').value = inc.amount || 0;
+  document.getElementById('inc-source').value = inc.source || 'Bank Deposit / Transfer';
+  document.getElementById('inc-account').value = inc.accountId ? ('acc_' + inc.accountId) : 'none';
+  document.getElementById('inc-date').value = inc.date || TDK;
+  document.getElementById('inc-notes').value = inc.notes || '';
+
+  const tEl = document.getElementById('inc-form-title');
+  const bEl = document.getElementById('inc-submit-btn');
+  if(tEl) tEl.textContent = '// edit_income_entry()';
+  if(bEl) bEl.textContent = 'Update Income';
+
+  const form = document.getElementById('add-inc-form');
+  if(form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function addExpenseEntry(){
   const title = (document.getElementById('exp-title').value || '').trim();
   const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
@@ -2410,20 +2505,38 @@ function addExpenseEntry(){
     }
   }
 
-  if(!DB.expenses) DB.expenses = [];
-  DB.expenses.unshift({
-    id: Date.now(),
-    type: 'expense',
-    title,
-    amount,
-    category,
-    method,
-    accountId: selectedAcc ? selectedAcc.id : null,
-    accountName: selectedAcc ? selectedAcc.name : null,
-    date,
-    notes,
-    created: Date.now()
-  });
+  if(editingExpenseId !== null){
+    const idx = (DB.expenses || []).findIndex(e => e.id === editingExpenseId);
+    if(idx !== -1){
+      DB.expenses[idx] = {
+        ...DB.expenses[idx],
+        title,
+        amount,
+        category,
+        method,
+        accountId: selectedAcc ? selectedAcc.id : null,
+        accountName: selectedAcc ? selectedAcc.name : null,
+        date,
+        notes
+      };
+    }
+    editingExpenseId = null;
+  } else {
+    if(!DB.expenses) DB.expenses = [];
+    DB.expenses.unshift({
+      id: Date.now(),
+      type: 'expense',
+      title,
+      amount,
+      category,
+      method,
+      accountId: selectedAcc ? selectedAcc.id : null,
+      accountName: selectedAcc ? selectedAcc.name : null,
+      date,
+      notes,
+      created: Date.now()
+    });
+  }
 
   sched();
 
@@ -2431,6 +2544,11 @@ function addExpenseEntry(){
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
+
+  const tEl = document.getElementById('exp-form-title');
+  const bEl = document.getElementById('exp-submit-btn');
+  if(tEl) tEl.textContent = '// log_new_expense()';
+  if(bEl) bEl.textContent = 'Log Expense';
 
   toggleExpForm();
   renderFinancePage();
@@ -2473,19 +2591,36 @@ function addIncomeEntry(){
     }
   }
 
-  if(!DB.incomes) DB.incomes = [];
-  DB.incomes.unshift({
-    id: Date.now(),
-    type: 'income',
-    title,
-    amount,
-    source,
-    accountId: selectedAcc ? selectedAcc.id : null,
-    accountName: selectedAcc ? selectedAcc.name : null,
-    date,
-    notes,
-    created: Date.now()
-  });
+  if(editingIncomeId !== null){
+    const idx = (DB.incomes || []).findIndex(i => i.id === editingIncomeId);
+    if(idx !== -1){
+      DB.incomes[idx] = {
+        ...DB.incomes[idx],
+        title,
+        amount,
+        source,
+        accountId: selectedAcc ? selectedAcc.id : null,
+        accountName: selectedAcc ? selectedAcc.name : null,
+        date,
+        notes
+      };
+    }
+    editingIncomeId = null;
+  } else {
+    if(!DB.incomes) DB.incomes = [];
+    DB.incomes.unshift({
+      id: Date.now(),
+      type: 'income',
+      title,
+      amount,
+      source,
+      accountId: selectedAcc ? selectedAcc.id : null,
+      accountName: selectedAcc ? selectedAcc.name : null,
+      date,
+      notes,
+      created: Date.now()
+    });
+  }
 
   sched();
 
@@ -2493,6 +2628,11 @@ function addIncomeEntry(){
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
+
+  const tEl = document.getElementById('inc-form-title');
+  const bEl = document.getElementById('inc-submit-btn');
+  if(tEl) tEl.textContent = '// log_income_or_deposit()';
+  if(bEl) bEl.textContent = 'Save Income';
 
   toggleIncForm();
   renderFinancePage();
@@ -2744,7 +2884,10 @@ function renderFinancePage(){
               <span style="color:var(--t4);">•</span>
               <span>${t.date}</span>
             </div>
-            <button class="del-btn" style="width:20px;height:20px;" onclick="${isInc ? 'delIncomeEntry' : 'delExpenseEntry'}(${t.id})">✕</button>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <button class="btn bg bs" style="padding:2px 6px;font-size:9px;" onclick="${isInc ? 'editIncomeEntry' : 'editExpenseEntry'}(${t.id})">✎ edit</button>
+              <button class="del-btn" style="width:20px;height:20px;" onclick="${isInc ? 'delIncomeEntry' : 'delExpenseEntry'}(${t.id})">✕</button>
+            </div>
           </div>
           ${t.notes ? `<div style="font-family:var(--mono);font-size:9.5px;color:var(--t3);margin-top:4px;background:var(--bg1);padding:4px 8px;border-radius:4px;">${t.notes}</div>` : ''}
         </div>`;
