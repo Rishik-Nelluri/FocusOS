@@ -2265,12 +2265,65 @@ function setFinFilter(f){
   renderFinancePage();
 }
 
+function populateAccountSelects(){
+  const expSel = document.getElementById('exp-method');
+  const incSel = document.getElementById('inc-source');
+  const accounts = DB.bankAccounts || [];
+
+  if(expSel){
+    const curVal = expSel.value;
+    let html = '';
+    if(accounts.length){
+      html += '<optgroup label="🏦 Registered Accounts &amp; Wallets">';
+      accounts.forEach(a => {
+        const ico = a.type === 'Cash' ? '💵' : a.type === 'UPI Wallet' ? '📱' : '🏦';
+        html += `<option value="acc_${a.id}">${ico} ${a.name} (Bal: ₹${parseFloat(a.balance).toLocaleString('en-IN')})</option>`;
+      });
+      html += '</optgroup>';
+    }
+    html += `<optgroup label="💳 General Payment Methods">
+      <option value="UPI / GPay">📱 UPI / GPay</option>
+      <option value="Credit Card">💳 Credit Card</option>
+      <option value="Debit Card">🏦 Debit Card</option>
+      <option value="Cash">💵 Cash</option>
+    </optgroup>`;
+    expSel.innerHTML = html;
+    if(curVal && [...expSel.options].some(o => o.value === curVal)){
+      expSel.value = curVal;
+    }
+  }
+
+  if(incSel){
+    const curVal = incSel.value;
+    let html = '';
+    if(accounts.length){
+      html += '<optgroup label="🏦 Registered Accounts &amp; Wallets">';
+      accounts.forEach(a => {
+        const ico = a.type === 'Cash' ? '💵' : a.type === 'UPI Wallet' ? '📱' : '🏦';
+        html += `<option value="acc_${a.id}">${ico} ${a.name} (Bal: ₹${parseFloat(a.balance).toLocaleString('en-IN')})</option>`;
+      });
+      html += '</optgroup>';
+    }
+    html += `<optgroup label="💰 General Deposit Categories">
+      <option value="Bank Account">🏦 Bank Account</option>
+      <option value="UPI Wallet">📱 UPI Wallet</option>
+      <option value="Cash">💵 Cash in Hand</option>
+      <option value="Savings">💰 Savings</option>
+    </optgroup>`;
+    incSel.innerHTML = html;
+    if(curVal && [...incSel.options].some(o => o.value === curVal)){
+      incSel.value = curVal;
+    }
+  }
+}
+
 function toggleExpForm(){
   addExpFormOpen = !addExpFormOpen;
   addIncFormOpen = false;
   addAccFormOpen = false;
   updateFinanceFormVisibility();
   if(addExpFormOpen){
+    populateAccountSelects();
     const dInp = document.getElementById('exp-date');
     if(dInp && !dInp.value) dInp.value = TDK;
     setTimeout(() => {
@@ -2286,6 +2339,7 @@ function toggleIncForm(){
   addAccFormOpen = false;
   updateFinanceFormVisibility();
   if(addIncFormOpen){
+    populateAccountSelects();
     const dInp = document.getElementById('inc-date');
     if(dInp && !dInp.value) dInp.value = TDK;
     setTimeout(() => {
@@ -2332,13 +2386,25 @@ function addExpenseEntry(){
   const title = (document.getElementById('exp-title').value || '').trim();
   const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
   const category = document.getElementById('exp-cat').value || 'Misc';
-  const method = document.getElementById('exp-method').value || 'UPI / GPay';
+  const rawMethod = document.getElementById('exp-method').value || 'UPI / GPay';
   const date = document.getElementById('exp-date').value || TDK;
   const notes = (document.getElementById('exp-notes').value || '').trim();
 
   if(!title || amount <= 0){
     alert('Please enter a valid expense item title and amount.');
     return;
+  }
+
+  let selectedAcc = null;
+  let methodLabel = rawMethod;
+
+  if(rawMethod.startsWith('acc_')){
+    const accId = parseInt(rawMethod.replace('acc_', ''));
+    selectedAcc = (DB.bankAccounts || []).find(a => a.id === accId);
+    if(selectedAcc){
+      methodLabel = selectedAcc.name;
+      selectedAcc.balance = Math.max(0, (parseFloat(selectedAcc.balance) || 0) - amount);
+    }
   }
 
   if(!DB.expenses) DB.expenses = [];
@@ -2348,7 +2414,8 @@ function addExpenseEntry(){
     title,
     amount,
     category,
-    method,
+    method: methodLabel,
+    accountId: selectedAcc ? selectedAcc.id : null,
     date,
     notes,
     created: Date.now()
@@ -2367,6 +2434,13 @@ function addExpenseEntry(){
 
 function delExpenseEntry(id){
   if(!confirm('Delete this transaction?')) return;
+  const exp = (DB.expenses || []).find(e => e.id === id);
+  if(exp && exp.accountId){
+    const acc = (DB.bankAccounts || []).find(a => a.id === exp.accountId);
+    if(acc){
+      acc.balance = (parseFloat(acc.balance) || 0) + (parseFloat(exp.amount) || 0);
+    }
+  }
   DB.expenses = (DB.expenses || []).filter(e => e.id !== id);
   sched();
   renderFinancePage();
@@ -2375,7 +2449,7 @@ function delExpenseEntry(id){
 function addIncomeEntry(){
   const title = (document.getElementById('inc-title').value || '').trim();
   const amount = parseFloat(document.getElementById('inc-amount').value) || 0;
-  const source = document.getElementById('inc-source').value || 'Bank Account';
+  const rawSource = document.getElementById('inc-source').value || 'Bank Account';
   const date = document.getElementById('inc-date').value || TDK;
   const notes = (document.getElementById('inc-notes').value || '').trim();
 
@@ -2384,13 +2458,26 @@ function addIncomeEntry(){
     return;
   }
 
+  let selectedAcc = null;
+  let sourceLabel = rawSource;
+
+  if(rawSource.startsWith('acc_')){
+    const accId = parseInt(rawSource.replace('acc_', ''));
+    selectedAcc = (DB.bankAccounts || []).find(a => a.id === accId);
+    if(selectedAcc){
+      sourceLabel = selectedAcc.name;
+      selectedAcc.balance = (parseFloat(selectedAcc.balance) || 0) + amount;
+    }
+  }
+
   if(!DB.incomes) DB.incomes = [];
   DB.incomes.unshift({
     id: Date.now(),
     type: 'income',
     title,
     amount,
-    source,
+    source: sourceLabel,
+    accountId: selectedAcc ? selectedAcc.id : null,
     date,
     notes,
     created: Date.now()
@@ -2409,6 +2496,13 @@ function addIncomeEntry(){
 
 function delIncomeEntry(id){
   if(!confirm('Delete this income record?')) return;
+  const inc = (DB.incomes || []).find(i => i.id === id);
+  if(inc && inc.accountId){
+    const acc = (DB.bankAccounts || []).find(a => a.id === inc.accountId);
+    if(acc){
+      acc.balance = Math.max(0, (parseFloat(acc.balance) || 0) - (parseFloat(inc.amount) || 0));
+    }
+  }
   DB.incomes = (DB.incomes || []).filter(i => i.id !== id);
   sched();
   renderFinancePage();
@@ -2455,6 +2549,8 @@ function renderFinancePage(){
   const incomes = DB.incomes || [];
   const bankAccounts = DB.bankAccounts || [];
 
+  populateAccountSelects();
+
   const now = new Date();
   const curMonthPrefix = `${now.getFullYear()}-${pad(now.getMonth()+1)}`;
 
@@ -2468,8 +2564,12 @@ function renderFinancePage(){
   const totalAllExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
   // Calculated Liquid Funds Available:
-  // (Bank Account Balances + All Income Logged) - All Expenses Logged
-  const netFundsAvailable = Math.max(0, (totalAccountBalances + totalAllIncomes) - totalAllExpenses);
+  let netFundsAvailable = 0;
+  if(bankAccounts.length){
+    netFundsAvailable = totalAccountBalances;
+  } else {
+    netFundsAvailable = Math.max(0, totalAllIncomes - totalAllExpenses);
+  }
 
   const monthlyBudget = (DB.settings && DB.settings.monthlyBudget) ? parseFloat(DB.settings.monthlyBudget) : 0;
 
