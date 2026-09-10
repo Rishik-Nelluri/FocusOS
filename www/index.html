@@ -968,6 +968,24 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                             <input type="number" id="exp-amount" min="0" step="1" placeholder="0" />
                         </div>
                         <div class="fgrp">
+                            <div class="flbl">Drawn From Bank Account</div>
+                            <select id="exp-account" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                            </select>
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Payment Method</div>
+                            <select id="exp-method" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                                <option value="UPI / GPay">📱 UPI / GPay</option>
+                                <option value="Credit Card">💳 Credit Card</option>
+                                <option value="Debit Card">🏦 Debit Card</option>
+                                <option value="Net Banking">🌐 Net Banking</option>
+                                <option value="Cash">💵 Cash</option>
+                                <option value="Cheque / Transfer">📜 Cheque / Transfer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fgrid" style="margin-bottom:12px;">
+                        <div class="fgrp">
                             <div class="flbl">Category</div>
                             <select id="exp-cat" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
                                 <option value="Food &amp; Drinks">🍔 Food &amp; Drinks</option>
@@ -981,21 +999,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                             </select>
                         </div>
                         <div class="fgrp">
-                            <div class="flbl">Payment Method / Account</div>
-                            <select id="exp-method" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
-                                <option value="UPI / GPay">📱 UPI / GPay</option>
-                                <option value="Credit Card">💳 Credit Card</option>
-                                <option value="Debit Card">🏦 Debit Card</option>
-                                <option value="Cash">💵 Cash</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="fgrid" style="margin-bottom:12px;">
-                        <div class="fgrp">
                             <div class="flbl">Date</div>
                             <input type="date" id="exp-date" />
                         </div>
-                        <div class="fgrp">
+                        <div class="fgrp" style="grid-column:span 2;">
                             <div class="flbl">Notes (optional)</div>
                             <input type="text" id="exp-notes" placeholder="e.g. split with friend, bill ref..." />
                         </div>
@@ -1019,22 +1026,31 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                             <input type="number" id="inc-amount" min="0" step="1" placeholder="0" />
                         </div>
                         <div class="fgrp">
-                            <div class="flbl">Deposited To</div>
-                            <select id="inc-source" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
-                                <option value="Bank Account">🏦 Bank Account</option>
-                                <option value="UPI Wallet">📱 UPI / GPay</option>
-                                <option value="Cash">💵 Cash in Hand</option>
-                                <option value="Savings">💰 Savings</option>
+                            <div class="flbl">Deposited To Bank Account</div>
+                            <select id="inc-account" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
                             </select>
                         </div>
+                        <div class="fgrp">
+                            <div class="flbl">Income Type / Channel</div>
+                            <select id="inc-source" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                                <option value="Bank Deposit / Transfer">🏦 Bank Deposit / Transfer</option>
+                                <option value="UPI Deposit">📱 UPI Deposit</option>
+                                <option value="Cash Input">💵 Cash Input</option>
+                                <option value="Pocket Money / Allowance">🎁 Pocket Money / Allowance</option>
+                                <option value="Salary / Stipend">💼 Salary / Stipend</option>
+                                <option value="Freelance">💻 Freelance</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fgrid" style="margin-bottom:12px;">
                         <div class="fgrp">
                             <div class="flbl">Date</div>
                             <input type="date" id="inc-date" />
                         </div>
-                    </div>
-                    <div class="fgrp" style="margin-bottom:12px;">
-                        <div class="flbl">Notes / Reference (optional)</div>
-                        <input type="text" id="inc-notes" placeholder="e.g. Monthly allowance from parents, client payment..." />
+                        <div class="fgrp">
+                            <div class="flbl">Notes / Reference (optional)</div>
+                            <input type="text" id="inc-notes" placeholder="e.g. Monthly allowance from parents, client payment..." />
+                        </div>
                     </div>
                     <div class="frow">
                         <button class="btn bp" style="background:var(--g);color:#060a0e;" onclick="addIncomeEntry()">Save Income</button>
@@ -2266,53 +2282,41 @@ function setFinFilter(f){
 }
 
 function populateAccountSelects(){
-  const expSel = document.getElementById('exp-method');
-  const incSel = document.getElementById('inc-source');
+  const expAccSel = document.getElementById('exp-account');
+  const incAccSel = document.getElementById('inc-account');
   const accounts = DB.bankAccounts || [];
 
-  if(expSel){
-    const curVal = expSel.value;
-    let html = '';
+  if(expAccSel){
+    const curVal = expAccSel.value;
+    let html = '<option value="none">General / Unspecified Account</option>';
     if(accounts.length){
-      html += '<optgroup label="🏦 Registered Accounts &amp; Wallets">';
+      html += '<optgroup label="🏦 Registered Bank Accounts &amp; Wallets">';
       accounts.forEach(a => {
         const ico = a.type === 'Cash' ? '💵' : a.type === 'UPI Wallet' ? '📱' : '🏦';
         html += `<option value="acc_${a.id}">${ico} ${a.name} (Bal: ₹${parseFloat(a.balance).toLocaleString('en-IN')})</option>`;
       });
       html += '</optgroup>';
     }
-    html += `<optgroup label="💳 General Payment Methods">
-      <option value="UPI / GPay">📱 UPI / GPay</option>
-      <option value="Credit Card">💳 Credit Card</option>
-      <option value="Debit Card">🏦 Debit Card</option>
-      <option value="Cash">💵 Cash</option>
-    </optgroup>`;
-    expSel.innerHTML = html;
-    if(curVal && [...expSel.options].some(o => o.value === curVal)){
-      expSel.value = curVal;
+    expAccSel.innerHTML = html;
+    if(curVal && [...expAccSel.options].some(o => o.value === curVal)){
+      expAccSel.value = curVal;
     }
   }
 
-  if(incSel){
-    const curVal = incSel.value;
-    let html = '';
+  if(incAccSel){
+    const curVal = incAccSel.value;
+    let html = '<option value="none">General / Unspecified Account</option>';
     if(accounts.length){
-      html += '<optgroup label="🏦 Registered Accounts &amp; Wallets">';
+      html += '<optgroup label="🏦 Registered Bank Accounts &amp; Wallets">';
       accounts.forEach(a => {
         const ico = a.type === 'Cash' ? '💵' : a.type === 'UPI Wallet' ? '📱' : '🏦';
         html += `<option value="acc_${a.id}">${ico} ${a.name} (Bal: ₹${parseFloat(a.balance).toLocaleString('en-IN')})</option>`;
       });
       html += '</optgroup>';
     }
-    html += `<optgroup label="💰 General Deposit Categories">
-      <option value="Bank Account">🏦 Bank Account</option>
-      <option value="UPI Wallet">📱 UPI Wallet</option>
-      <option value="Cash">💵 Cash in Hand</option>
-      <option value="Savings">💰 Savings</option>
-    </optgroup>`;
-    incSel.innerHTML = html;
-    if(curVal && [...incSel.options].some(o => o.value === curVal)){
-      incSel.value = curVal;
+    incAccSel.innerHTML = html;
+    if(curVal && [...incAccSel.options].some(o => o.value === curVal)){
+      incAccSel.value = curVal;
     }
   }
 }
@@ -2386,7 +2390,8 @@ function addExpenseEntry(){
   const title = (document.getElementById('exp-title').value || '').trim();
   const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
   const category = document.getElementById('exp-cat').value || 'Misc';
-  const rawMethod = document.getElementById('exp-method').value || 'UPI / GPay';
+  const method = document.getElementById('exp-method').value || 'UPI / GPay';
+  const rawAcc = document.getElementById('exp-account').value || 'none';
   const date = document.getElementById('exp-date').value || TDK;
   const notes = (document.getElementById('exp-notes').value || '').trim();
 
@@ -2396,13 +2401,11 @@ function addExpenseEntry(){
   }
 
   let selectedAcc = null;
-  let methodLabel = rawMethod;
 
-  if(rawMethod.startsWith('acc_')){
-    const accId = parseInt(rawMethod.replace('acc_', ''));
+  if(rawAcc.startsWith('acc_')){
+    const accId = parseInt(rawAcc.replace('acc_', ''));
     selectedAcc = (DB.bankAccounts || []).find(a => a.id === accId);
     if(selectedAcc){
-      methodLabel = selectedAcc.name;
       selectedAcc.balance = Math.max(0, (parseFloat(selectedAcc.balance) || 0) - amount);
     }
   }
@@ -2414,8 +2417,9 @@ function addExpenseEntry(){
     title,
     amount,
     category,
-    method: methodLabel,
+    method,
     accountId: selectedAcc ? selectedAcc.id : null,
+    accountName: selectedAcc ? selectedAcc.name : null,
     date,
     notes,
     created: Date.now()
@@ -2449,7 +2453,8 @@ function delExpenseEntry(id){
 function addIncomeEntry(){
   const title = (document.getElementById('inc-title').value || '').trim();
   const amount = parseFloat(document.getElementById('inc-amount').value) || 0;
-  const rawSource = document.getElementById('inc-source').value || 'Bank Account';
+  const source = document.getElementById('inc-source').value || 'Bank Deposit / Transfer';
+  const rawAcc = document.getElementById('inc-account').value || 'none';
   const date = document.getElementById('inc-date').value || TDK;
   const notes = (document.getElementById('inc-notes').value || '').trim();
 
@@ -2459,13 +2464,11 @@ function addIncomeEntry(){
   }
 
   let selectedAcc = null;
-  let sourceLabel = rawSource;
 
-  if(rawSource.startsWith('acc_')){
-    const accId = parseInt(rawSource.replace('acc_', ''));
+  if(rawAcc.startsWith('acc_')){
+    const accId = parseInt(rawAcc.replace('acc_', ''));
     selectedAcc = (DB.bankAccounts || []).find(a => a.id === accId);
     if(selectedAcc){
-      sourceLabel = selectedAcc.name;
       selectedAcc.balance = (parseFloat(selectedAcc.balance) || 0) + amount;
     }
   }
@@ -2476,8 +2479,9 @@ function addIncomeEntry(){
     type: 'income',
     title,
     amount,
-    source: sourceLabel,
+    source,
     accountId: selectedAcc ? selectedAcc.id : null,
+    accountName: selectedAcc ? selectedAcc.name : null,
     date,
     notes,
     created: Date.now()
@@ -2720,6 +2724,10 @@ function renderFinancePage(){
         const pillBg = isInc ? 'var(--gd)' : 'var(--bg3)';
         const pillTxt = isInc ? 'Income' : (t.category || 'Expense');
 
+        const accLabel = t.accountName ? `🏦 ${t.accountName}` : '';
+        const channelLabel = isInc ? (t.source || '') : (t.method || '');
+        const metaStr = [accLabel, channelLabel].filter(Boolean).join(' • ') || 'General';
+
         listHtml += `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <div style="font-family:var(--ui);font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px;">
@@ -2729,10 +2737,10 @@ function renderFinancePage(){
             <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:${col};">${sign} ₹${parseFloat(t.amount).toLocaleString('en-IN')}</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--t3);">
-            <div style="display:flex;gap:6px;align-items:center;">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
               <span class="ttc-pill" style="padding:1px 6px;background:${pillBg};color:${isInc ? 'var(--g)' : 'var(--t2)'}">${pillTxt}</span>
               <span style="color:var(--t4);">•</span>
-              <span>${t.method || t.source || 'Account'}</span>
+              <span style="color:var(--t2);">${metaStr}</span>
               <span style="color:var(--t4);">•</span>
               <span>${t.date}</span>
             </div>
