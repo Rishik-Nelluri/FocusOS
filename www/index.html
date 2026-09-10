@@ -888,34 +888,52 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <div class="page" id="page-finance">
                 <div class="ph">
                     <div>
-                        <div class="ph-ey">finance &amp; budget</div>
-                        <div class="ph-title">Expense Tracker</div>
-                        <div class="ph-sub">Log expenses, manage monthly budget &amp; track spending</div>
+                        <div class="ph-ey">finance &amp; net funds</div>
+                        <div class="ph-title">Money &amp; Expense Center</div>
+                        <div class="ph-sub">Track total funds, bank accounts, income inputs &amp; monthly expenses</div>
                     </div>
-                    <div class="ph-right">
+                    <div class="ph-right" style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button class="btn bp bs" onclick="toggleExpForm()">+ log expense</button>
+                        <button class="btn bg bs" style="border-color:rgba(0,255,163,0.3);color:var(--g);" onclick="toggleIncForm()">+ add income</button>
+                        <button class="btn bg bs" onclick="toggleAccForm()">+ bank account</button>
                     </div>
                 </div>
 
                 <!-- SUMMARY TILES -->
-                <div class="dgrid" style="margin-bottom:20px;">
+                <div class="dgrid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">
+                    <div class="stile">
+                        <div class="stile-lbl">total money available</div>
+                        <div class="stile-val" id="exp-net-total" style="color:var(--g)">₹0</div>
+                        <div class="stile-sub" id="exp-net-sub">net available funds</div>
+                        <div class="stile-ico">💳</div>
+                    </div>
+                    <div class="stile">
+                        <div class="stile-lbl">income this month</div>
+                        <div class="stile-val" id="exp-inc-total" style="color:var(--blue)">₹0</div>
+                        <div class="stile-sub" id="exp-inc-sub">0 deposits</div>
+                        <div class="stile-ico">📈</div>
+                    </div>
                     <div class="stile">
                         <div class="stile-lbl">spent this month</div>
-                        <div class="stile-val" id="exp-m-total" style="color:var(--g)">₹0</div>
+                        <div class="stile-val" id="exp-m-total" style="color:var(--red)">₹0</div>
                         <div class="stile-sub" id="exp-m-sub">0 transactions</div>
                         <div class="stile-ico">💸</div>
                     </div>
                     <div class="stile">
-                        <div class="stile-lbl">spent today</div>
-                        <div class="stile-val" id="exp-d-total" style="color:var(--amber)">₹0</div>
-                        <div class="stile-sub" id="exp-d-sub">today's total</div>
-                        <div class="stile-ico">📅</div>
-                    </div>
-                    <div class="stile">
                         <div class="stile-lbl">monthly budget</div>
-                        <div class="stile-val" id="exp-b-rem" style="color:var(--blue)">₹0</div>
+                        <div class="stile-val" id="exp-b-rem" style="color:var(--amber)">₹0</div>
                         <div class="stile-sub" id="exp-b-sub">limit: ₹0</div>
                         <div class="stile-ico">📊</div>
+                    </div>
+                </div>
+
+                <!-- BANK ACCOUNTS & WALLETS CARD -->
+                <div style="background:var(--bg1);border:1px solid var(--line);border-radius:var(--r3);padding:18px 20px;margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                        <div style="font-family:var(--ui);font-size:14px;font-weight:700;color:var(--t1);">🏦 Bank Accounts &amp; Liquid Funds</div>
+                        <button class="btn bg bs" style="padding:3px 8px;font-size:10px;" onclick="toggleAccForm()">+ add account</button>
+                    </div>
+                    <div id="bank-accounts-list" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                     </div>
                 </div>
 
@@ -963,7 +981,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                             </select>
                         </div>
                         <div class="fgrp">
-                            <div class="flbl">Payment Method</div>
+                            <div class="flbl">Payment Method / Account</div>
                             <select id="exp-method" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
                                 <option value="UPI / GPay">📱 UPI / GPay</option>
                                 <option value="Credit Card">💳 Credit Card</option>
@@ -988,6 +1006,69 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                     </div>
                 </div>
 
+                <!-- ADD INCOME FORM -->
+                <div class="aform" id="add-inc-form" style="margin-bottom:20px;">
+                    <div class="aform-title" style="color:var(--g);">// log_income_or_deposit()</div>
+                    <div class="fgrid" style="margin-bottom:10px;">
+                        <div class="fgrp">
+                            <div class="flbl">Source / Title</div>
+                            <input type="text" id="inc-title" placeholder="e.g. Pocket Money, Salary, Freelance, Bank Transfer..." />
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Amount Received (₹)</div>
+                            <input type="number" id="inc-amount" min="0" step="1" placeholder="0" />
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Deposited To</div>
+                            <select id="inc-source" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                                <option value="Bank Account">🏦 Bank Account</option>
+                                <option value="UPI Wallet">📱 UPI / GPay</option>
+                                <option value="Cash">💵 Cash in Hand</option>
+                                <option value="Savings">💰 Savings</option>
+                            </select>
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Date</div>
+                            <input type="date" id="inc-date" />
+                        </div>
+                    </div>
+                    <div class="fgrp" style="margin-bottom:12px;">
+                        <div class="flbl">Notes / Reference (optional)</div>
+                        <input type="text" id="inc-notes" placeholder="e.g. Monthly allowance from parents, client payment..." />
+                    </div>
+                    <div class="frow">
+                        <button class="btn bp" style="background:var(--g);color:#060a0e;" onclick="addIncomeEntry()">Save Income</button>
+                        <button class="btn bg" onclick="toggleIncForm()">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- ADD BANK ACCOUNT FORM -->
+                <div class="aform" id="add-acc-form" style="margin-bottom:20px;">
+                    <div class="aform-title" style="color:var(--blue);">// register_bank_account()</div>
+                    <div class="fgrid" style="margin-bottom:12px;">
+                        <div class="fgrp">
+                            <div class="flbl">Account Name</div>
+                            <input type="text" id="acc-name" placeholder="e.g. HDFC Primary, SBI Savings, GPay, Cash..." />
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Account Type</div>
+                            <select id="acc-type" style="background:var(--bg2);color:var(--t1);border:1px solid var(--line2);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:11px;outline:none;">
+                                <option value="Bank Account">🏦 Bank Account</option>
+                                <option value="UPI Wallet">📱 UPI Wallet</option>
+                                <option value="Cash">💵 Cash</option>
+                            </select>
+                        </div>
+                        <div class="fgrp">
+                            <div class="flbl">Initial Balance (₹)</div>
+                            <input type="number" id="acc-balance" min="0" step="1" placeholder="0" />
+                        </div>
+                    </div>
+                    <div class="frow">
+                        <button class="btn bp" onclick="addAccountEntry()">Add Account</button>
+                        <button class="btn bg" onclick="toggleAccForm()">Cancel</button>
+                    </div>
+                </div>
+
                 <div class="dash-cols">
                     <div>
                         <!-- CATEGORY BREAKDOWN -->
@@ -996,8 +1077,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                         </div>
                     </div>
                     <div>
-                        <!-- EXPENSE HISTORY LOG -->
-                        <div class="slbl">recent transactions</div>
+                        <!-- UNIFIED TRANSACTIONS LEDGER -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+                            <div class="slbl" style="margin-bottom:0;">transaction ledger</div>
+                            <div style="display:flex;gap:4px;">
+                                <button class="btn bg bs" id="flt-all" style="padding:2px 8px;font-size:9.5px;" onclick="setFinFilter('all')">All</button>
+                                <button class="btn bg bs" id="flt-exp" style="padding:2px 8px;font-size:9.5px;" onclick="setFinFilter('exp')">Expenses</button>
+                                <button class="btn bg bs" id="flt-inc" style="padding:2px 8px;font-size:9.5px;" onclick="setFinFilter('inc')">Income</button>
+                            </div>
+                        </div>
                         <div id="exp-list"></div>
                     </div>
                 </div>
@@ -1421,8 +1509,10 @@ function applyCloudData(data){
 
   isRemoteUpdating = true;
   const currentPin = (DB.settings && DB.settings.pin) ? DB.settings.pin : '1234';
-  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[]}, data);
+  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[],incomes:[],bankAccounts:[]}, data);
   if(!DB.expenses) DB.expenses = [];
+  if(!DB.incomes) DB.incomes = [];
+  if(!DB.bankAccounts) DB.bankAccounts = [];
   DB.settings = Object.assign({pin: currentPin, lockEnabled: true}, data.settings || {});
   DB.settings.lockEnabled = true;
   localStorage.setItem('fos', JSON.stringify(DB));
@@ -1477,8 +1567,10 @@ async function loadData(){
     const ls=localStorage.getItem('fos');
     if(ls){
       const parsed = JSON.parse(ls);
-      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[]}, parsed);
+      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[],incomes:[],bankAccounts:[]}, parsed);
       if(!DB.expenses) DB.expenses = [];
+      if(!DB.incomes) DB.incomes = [];
+      if(!DB.bankAccounts) DB.bankAccounts = [];
       DB.settings = Object.assign({pin:'1234', lockEnabled:true}, parsed.settings || {});
     }
   }catch(e){}
@@ -1487,6 +1579,8 @@ async function loadData(){
   if(!DB.settings.pin) DB.settings.pin = '1234';
   if(!DB.passwords) DB.passwords = [];
   if(!DB.expenses) DB.expenses = [];
+  if(!DB.incomes) DB.incomes = [];
+  if(!DB.bankAccounts) DB.bankAccounts = [];
   initRealtimeCloudSync();
 }
 
@@ -2150,12 +2244,32 @@ function renderPasswordVaultList(){
   wrap.innerHTML = html;
 }
 
-// FINANCE & EXPENSES LOGIC
+// FINANCE, INCOME & BANK ACCOUNTS LOGIC
 let addExpFormOpen = false;
+let addIncFormOpen = false;
+let addAccFormOpen = false;
+let finFilter = 'all'; // 'all', 'exp', 'inc'
+
+function setFinFilter(f){
+  finFilter = f;
+  ['all','exp','inc'].forEach(type => {
+    const btn = document.getElementById('flt-' + type);
+    if(btn){
+      if(type === f){
+        btn.className = 'btn bp bs';
+      } else {
+        btn.className = 'btn bg bs';
+      }
+    }
+  });
+  renderFinancePage();
+}
+
 function toggleExpForm(){
   addExpFormOpen = !addExpFormOpen;
-  const form = document.getElementById('add-exp-form');
-  if(form) form.classList.toggle('open', addExpFormOpen);
+  addIncFormOpen = false;
+  addAccFormOpen = false;
+  updateFinanceFormVisibility();
   if(addExpFormOpen){
     const dInp = document.getElementById('exp-date');
     if(dInp && !dInp.value) dInp.value = TDK;
@@ -2164,6 +2278,43 @@ function toggleExpForm(){
       if(tInp) tInp.focus();
     }, 50);
   }
+}
+
+function toggleIncForm(){
+  addIncFormOpen = !addIncFormOpen;
+  addExpFormOpen = false;
+  addAccFormOpen = false;
+  updateFinanceFormVisibility();
+  if(addIncFormOpen){
+    const dInp = document.getElementById('inc-date');
+    if(dInp && !dInp.value) dInp.value = TDK;
+    setTimeout(() => {
+      const tInp = document.getElementById('inc-title');
+      if(tInp) tInp.focus();
+    }, 50);
+  }
+}
+
+function toggleAccForm(){
+  addAccFormOpen = !addAccFormOpen;
+  addExpFormOpen = false;
+  addIncFormOpen = false;
+  updateFinanceFormVisibility();
+  if(addAccFormOpen){
+    setTimeout(() => {
+      const aInp = document.getElementById('acc-name');
+      if(aInp) aInp.focus();
+    }, 50);
+  }
+}
+
+function updateFinanceFormVisibility(){
+  const ef = document.getElementById('add-exp-form');
+  const inf = document.getElementById('add-inc-form');
+  const af = document.getElementById('add-acc-form');
+  if(ef) ef.classList.toggle('open', addExpFormOpen);
+  if(inf) inf.classList.toggle('open', addIncFormOpen);
+  if(af) af.classList.toggle('open', addAccFormOpen);
 }
 
 function saveMonthlyBudget(){
@@ -2193,6 +2344,7 @@ function addExpenseEntry(){
   if(!DB.expenses) DB.expenses = [];
   DB.expenses.unshift({
     id: Date.now(),
+    type: 'expense',
     title,
     amount,
     category,
@@ -2214,22 +2366,111 @@ function addExpenseEntry(){
 }
 
 function delExpenseEntry(id){
-  if(!confirm('Delete this expense transaction?')) return;
+  if(!confirm('Delete this transaction?')) return;
   DB.expenses = (DB.expenses || []).filter(e => e.id !== id);
+  sched();
+  renderFinancePage();
+}
+
+function addIncomeEntry(){
+  const title = (document.getElementById('inc-title').value || '').trim();
+  const amount = parseFloat(document.getElementById('inc-amount').value) || 0;
+  const source = document.getElementById('inc-source').value || 'Bank Account';
+  const date = document.getElementById('inc-date').value || TDK;
+  const notes = (document.getElementById('inc-notes').value || '').trim();
+
+  if(!title || amount <= 0){
+    alert('Please enter a valid income source title and amount.');
+    return;
+  }
+
+  if(!DB.incomes) DB.incomes = [];
+  DB.incomes.unshift({
+    id: Date.now(),
+    type: 'income',
+    title,
+    amount,
+    source,
+    date,
+    notes,
+    created: Date.now()
+  });
+
+  sched();
+
+  ['inc-title','inc-amount','inc-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+
+  toggleIncForm();
+  renderFinancePage();
+}
+
+function delIncomeEntry(id){
+  if(!confirm('Delete this income record?')) return;
+  DB.incomes = (DB.incomes || []).filter(i => i.id !== id);
+  sched();
+  renderFinancePage();
+}
+
+function addAccountEntry(){
+  const name = (document.getElementById('acc-name').value || '').trim();
+  const type = document.getElementById('acc-type').value || 'Bank Account';
+  const balance = parseFloat(document.getElementById('acc-balance').value) || 0;
+
+  if(!name){
+    alert('Please enter account name.');
+    return;
+  }
+
+  if(!DB.bankAccounts) DB.bankAccounts = [];
+  DB.bankAccounts.push({
+    id: Date.now(),
+    name,
+    type,
+    balance
+  });
+
+  sched();
+
+  ['acc-name','acc-balance'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+
+  toggleAccForm();
+  renderFinancePage();
+}
+
+function delAccountEntry(id){
+  if(!confirm('Delete this bank account?')) return;
+  DB.bankAccounts = (DB.bankAccounts || []).filter(a => a.id !== id);
   sched();
   renderFinancePage();
 }
 
 function renderFinancePage(){
   const expenses = DB.expenses || [];
+  const incomes = DB.incomes || [];
+  const bankAccounts = DB.bankAccounts || [];
+
   const now = new Date();
   const curMonthPrefix = `${now.getFullYear()}-${pad(now.getMonth()+1)}`;
 
   const monthExpenses = expenses.filter(e => (e.date || '').startsWith(curMonthPrefix));
-  const todayExpenses = expenses.filter(e => e.date === TDK);
+  const monthIncomes = incomes.filter(i => (i.date || '').startsWith(curMonthPrefix));
 
   const spentThisMonth = monthExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-  const spentToday = todayExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const incomeThisMonth = monthIncomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+  const totalAccountBalances = bankAccounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
+  const totalAllIncomes = incomes.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+  const totalAllExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+  // Calculated Liquid Funds Available:
+  // (Bank Account Balances + All Income Logged) - All Expenses Logged
+  const netFundsAvailable = Math.max(0, (totalAccountBalances + totalAllIncomes) - totalAllExpenses);
+
   const monthlyBudget = (DB.settings && DB.settings.monthlyBudget) ? parseFloat(DB.settings.monthlyBudget) : 0;
 
   // Set Budget Input field value
@@ -2238,24 +2479,31 @@ function renderFinancePage(){
     bInp.value = monthlyBudget || '';
   }
 
-  // Update Tile Values
+  // Update Summary Tiles
+  const netTotEl = document.getElementById('exp-net-total');
+  if(netTotEl) netTotEl.textContent = '₹' + netFundsAvailable.toLocaleString('en-IN');
+  const netSubEl = document.getElementById('exp-net-sub');
+  if(netSubEl) netSubEl.textContent = bankAccounts.length ? `${bankAccounts.length} accounts linked` : 'net liquid balance';
+
+  const incTotEl = document.getElementById('exp-inc-total');
+  if(incTotEl) incTotEl.textContent = '₹' + incomeThisMonth.toLocaleString('en-IN');
+  const incSubEl = document.getElementById('exp-inc-sub');
+  if(incSubEl) incSubEl.textContent = `${monthIncomes.length} deposits this month`;
+
   const mTotEl = document.getElementById('exp-m-total');
   if(mTotEl) mTotEl.textContent = '₹' + spentThisMonth.toLocaleString('en-IN');
   const mSubEl = document.getElementById('exp-m-sub');
   if(mSubEl) mSubEl.textContent = `${monthExpenses.length} transactions this month`;
 
-  const dTotEl = document.getElementById('exp-d-total');
-  if(dTotEl) dTotEl.textContent = '₹' + spentToday.toLocaleString('en-IN');
-
   const bRemEl = document.getElementById('exp-b-rem');
-  const remaining = monthlyBudget - spentThisMonth;
+  const remainingBudget = monthlyBudget - spentThisMonth;
   if(bRemEl){
     if(monthlyBudget > 0){
-      bRemEl.textContent = '₹' + (remaining >= 0 ? remaining.toLocaleString('en-IN') : '0');
-      bRemEl.style.color = remaining < 0 ? 'var(--red)' : 'var(--blue)';
+      bRemEl.textContent = '₹' + (remainingBudget >= 0 ? remainingBudget.toLocaleString('en-IN') : '0');
+      bRemEl.style.color = remainingBudget < 0 ? 'var(--red)' : 'var(--amber)';
     } else {
       bRemEl.textContent = '₹0';
-      bRemEl.style.color = 'var(--blue)';
+      bRemEl.style.color = 'var(--amber)';
     }
   }
 
@@ -2278,10 +2526,32 @@ function renderFinancePage(){
       } else {
         pBar.style.background = 'linear-gradient(90deg,var(--g),var(--amber))';
       }
-      pTxt.innerHTML = `<span>Used: ${pct}% (₹${spentThisMonth.toLocaleString('en-IN')})</span><span>${remaining < 0 ? 'Over budget by ₹' + Math.abs(remaining).toLocaleString('en-IN') : 'Remaining: ₹' + remaining.toLocaleString('en-IN')}</span>`;
+      pTxt.innerHTML = `<span>Used: ${pct}% (₹${spentThisMonth.toLocaleString('en-IN')})</span><span>${remainingBudget < 0 ? 'Over budget by ₹' + Math.abs(remainingBudget).toLocaleString('en-IN') : 'Remaining: ₹' + remainingBudget.toLocaleString('en-IN')}</span>`;
     } else {
       pBar.style.width = '0%';
       pTxt.innerHTML = `<span>Progress: 0%</span><span>Set budget goal above</span>`;
+    }
+  }
+
+  // Render Bank Accounts List
+  const accWrap = document.getElementById('bank-accounts-list');
+  if(accWrap){
+    if(!bankAccounts.length){
+      accWrap.innerHTML = '<div class="tmuted" style="font-size:10px;">no bank accounts registered yet — click "+ add account" above</div>';
+    } else {
+      let accHtml = '';
+      bankAccounts.forEach(a => {
+        const ico = a.type === 'Cash' ? '💵' : a.type === 'UPI Wallet' ? '📱' : '🏦';
+        accHtml += `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:8px 12px;display:flex;align-items:center;gap:10px;">
+          <div style="font-size:16px;">${ico}</div>
+          <div>
+            <div style="font-family:var(--ui);font-size:12px;font-weight:700;color:var(--t1);">${a.name}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--g);font-weight:700;">₹${parseFloat(a.balance).toLocaleString('en-IN')}</div>
+          </div>
+          <button class="del-btn" style="width:18px;height:18px;margin-left:6px;" onclick="delAccountEntry(${a.id})">✕</button>
+        </div>`;
+      });
+      accWrap.innerHTML = accHtml;
     }
   }
 
@@ -2326,30 +2596,49 @@ function renderFinancePage(){
     }
   }
 
-  // Expense Transactions List
+  // Combined Transactions Feed
   const listWrap = document.getElementById('exp-list');
   if(listWrap){
-    if(!expenses.length){
-      listWrap.innerHTML = '<div class="empty-st" style="padding:20px 0;"><div class="empty-ico">💸</div>No expense entries recorded</div>';
+    let items = [];
+    if(finFilter === 'all' || finFilter === 'exp'){
+      expenses.forEach(e => items.push({ ...e, itemType: 'expense' }));
+    }
+    if(finFilter === 'all' || finFilter === 'inc'){
+      incomes.forEach(i => items.push({ ...i, itemType: 'income' }));
+    }
+
+    items.sort((a, b) => (b.created || 0) - (a.created || 0));
+
+    if(!items.length){
+      listWrap.innerHTML = '<div class="empty-st" style="padding:20px 0;"><div class="empty-ico">💸</div>No transactions found</div>';
     } else {
       let listHtml = '';
-      expenses.slice(0, 30).forEach(e => {
+      items.slice(0, 35).forEach(t => {
+        const isInc = t.itemType === 'income';
+        const sign = isInc ? '+' : '-';
+        const col = isInc ? 'var(--g)' : 'var(--red)';
+        const pillBg = isInc ? 'var(--gd)' : 'var(--bg3)';
+        const pillTxt = isInc ? 'Income' : (t.category || 'Expense');
+
         listHtml += `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div style="font-family:var(--ui);font-size:13px;font-weight:700;color:var(--t1);">${e.title}</div>
-            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--g);">₹${parseFloat(e.amount).toLocaleString('en-IN')}</div>
+            <div style="font-family:var(--ui);font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:6px;">
+              <span>${isInc ? '📥' : '📤'}</span>
+              <span>${t.title}</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:${col};">${sign} ₹${parseFloat(t.amount).toLocaleString('en-IN')}</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--t3);">
             <div style="display:flex;gap:6px;align-items:center;">
-              <span class="ttc-pill" style="padding:1px 6px;">${e.category}</span>
+              <span class="ttc-pill" style="padding:1px 6px;background:${pillBg};color:${isInc ? 'var(--g)' : 'var(--t2)'}">${pillTxt}</span>
               <span style="color:var(--t4);">•</span>
-              <span>${e.method || 'UPI'}</span>
+              <span>${t.method || t.source || 'Account'}</span>
               <span style="color:var(--t4);">•</span>
-              <span>${e.date}</span>
+              <span>${t.date}</span>
             </div>
-            <button class="del-btn" style="width:20px;height:20px;" onclick="delExpenseEntry(${e.id})">✕</button>
+            <button class="del-btn" style="width:20px;height:20px;" onclick="${isInc ? 'delIncomeEntry' : 'delExpenseEntry'}(${t.id})">✕</button>
           </div>
-          ${e.notes ? `<div style="font-family:var(--mono);font-size:9.5px;color:var(--t3);margin-top:4px;background:var(--bg1);padding:4px 8px;border-radius:4px;">${e.notes}</div>` : ''}
+          ${t.notes ? `<div style="font-family:var(--mono);font-size:9.5px;color:var(--t3);margin-top:4px;background:var(--bg1);padding:4px 8px;border-radius:4px;">${t.notes}</div>` : ''}
         </div>`;
       });
       listWrap.innerHTML = listHtml;
