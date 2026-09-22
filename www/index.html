@@ -2423,15 +2423,8 @@ function saveMonthlyBudget(){
 }
 
 function editExpenseEntry(id){
-  const exp = (DB.expenses || []).find(e => e.id === id);
+  const exp = (DB.expenses || []).find(e => String(e.id) === String(id));
   if(!exp) return;
-
-  if(exp.accountId){
-    const acc = (DB.bankAccounts || []).find(a => a.id === exp.accountId);
-    if(acc){
-      acc.balance = (parseFloat(acc.balance) || 0) + (parseFloat(exp.amount) || 0);
-    }
-  }
 
   editingExpenseId = id;
   addExpFormOpen = true;
@@ -2458,15 +2451,8 @@ function editExpenseEntry(id){
 }
 
 function editIncomeEntry(id){
-  const inc = (DB.incomes || []).find(i => i.id === id);
+  const inc = (DB.incomes || []).find(i => String(i.id) === String(id));
   if(!inc) return;
-
-  if(inc.accountId){
-    const acc = (DB.bankAccounts || []).find(a => a.id === inc.accountId);
-    if(acc){
-      acc.balance = Math.max(0, (parseFloat(acc.balance) || 0) - (parseFloat(inc.amount) || 0));
-    }
-  }
 
   editingIncomeId = id;
   addIncFormOpen = true;
@@ -2505,19 +2491,29 @@ function addExpenseEntry(){
     return;
   }
 
-  let selectedAcc = null;
-
-  if(rawAcc.startsWith('acc_')){
-    const accId = parseInt(rawAcc.replace('acc_', ''));
-    selectedAcc = (DB.bankAccounts || []).find(a => a.id === accId);
-    if(selectedAcc){
-      selectedAcc.balance = Math.max(0, (parseFloat(selectedAcc.balance) || 0) - amount);
-    }
-  }
-
   if(editingExpenseId !== null){
-    const idx = (DB.expenses || []).findIndex(e => e.id === editingExpenseId);
+    const idx = (DB.expenses || []).findIndex(e => String(e.id) === String(editingExpenseId));
     if(idx !== -1){
+      const oldExp = DB.expenses[idx];
+      // 1. Revert previous expense balance effect on old account
+      if(oldExp.accountId){
+        const oldAcc = (DB.bankAccounts || []).find(a => String(a.id) === String(oldExp.accountId));
+        if(oldAcc){
+          oldAcc.balance = (parseFloat(oldAcc.balance) || 0) + (parseFloat(oldExp.amount) || 0);
+        }
+      }
+
+      // 2. Apply new expense balance effect on newly selected account
+      let selectedAcc = null;
+      if(rawAcc.startsWith('acc_')){
+        const accId = rawAcc.replace('acc_', '');
+        selectedAcc = (DB.bankAccounts || []).find(a => String(a.id) === String(accId));
+        if(selectedAcc){
+          selectedAcc.balance = Math.max(0, (parseFloat(selectedAcc.balance) || 0) - amount);
+        }
+      }
+
+      // 3. Update expense object
       DB.expenses[idx] = {
         ...DB.expenses[idx],
         title,
@@ -2532,6 +2528,15 @@ function addExpenseEntry(){
     }
     editingExpenseId = null;
   } else {
+    let selectedAcc = null;
+    if(rawAcc.startsWith('acc_')){
+      const accId = rawAcc.replace('acc_', '');
+      selectedAcc = (DB.bankAccounts || []).find(a => String(a.id) === String(accId));
+      if(selectedAcc){
+        selectedAcc.balance = Math.max(0, (parseFloat(selectedAcc.balance) || 0) - amount);
+      }
+    }
+
     if(!DB.expenses) DB.expenses = [];
     DB.expenses.unshift({
       id: Date.now(),
@@ -2566,14 +2571,14 @@ function addExpenseEntry(){
 
 function delExpenseEntry(id){
   if(!confirm('Delete this transaction?')) return;
-  const exp = (DB.expenses || []).find(e => e.id === id);
+  const exp = (DB.expenses || []).find(e => String(e.id) === String(id));
   if(exp && exp.accountId){
-    const acc = (DB.bankAccounts || []).find(a => a.id === exp.accountId);
+    const acc = (DB.bankAccounts || []).find(a => String(a.id) === String(exp.accountId));
     if(acc){
       acc.balance = (parseFloat(acc.balance) || 0) + (parseFloat(exp.amount) || 0);
     }
   }
-  DB.expenses = (DB.expenses || []).filter(e => e.id !== id);
+  DB.expenses = (DB.expenses || []).filter(e => String(e.id) !== String(id));
   sched();
   renderFinancePage();
 }
@@ -2591,19 +2596,29 @@ function addIncomeEntry(){
     return;
   }
 
-  let selectedAcc = null;
-
-  if(rawAcc.startsWith('acc_')){
-    const accId = parseInt(rawAcc.replace('acc_', ''));
-    selectedAcc = (DB.bankAccounts || []).find(a => a.id === accId);
-    if(selectedAcc){
-      selectedAcc.balance = (parseFloat(selectedAcc.balance) || 0) + amount;
-    }
-  }
-
   if(editingIncomeId !== null){
-    const idx = (DB.incomes || []).findIndex(i => i.id === editingIncomeId);
+    const idx = (DB.incomes || []).findIndex(i => String(i.id) === String(editingIncomeId));
     if(idx !== -1){
+      const oldInc = DB.incomes[idx];
+      // 1. Revert previous income balance effect on old account
+      if(oldInc.accountId){
+        const oldAcc = (DB.bankAccounts || []).find(a => String(a.id) === String(oldInc.accountId));
+        if(oldAcc){
+          oldAcc.balance = Math.max(0, (parseFloat(oldAcc.balance) || 0) - (parseFloat(oldInc.amount) || 0));
+        }
+      }
+
+      // 2. Apply new income balance effect on newly selected account
+      let selectedAcc = null;
+      if(rawAcc.startsWith('acc_')){
+        const accId = rawAcc.replace('acc_', '');
+        selectedAcc = (DB.bankAccounts || []).find(a => String(a.id) === String(accId));
+        if(selectedAcc){
+          selectedAcc.balance = (parseFloat(selectedAcc.balance) || 0) + amount;
+        }
+      }
+
+      // 3. Update income object
       DB.incomes[idx] = {
         ...DB.incomes[idx],
         title,
@@ -2617,6 +2632,15 @@ function addIncomeEntry(){
     }
     editingIncomeId = null;
   } else {
+    let selectedAcc = null;
+    if(rawAcc.startsWith('acc_')){
+      const accId = rawAcc.replace('acc_', '');
+      selectedAcc = (DB.bankAccounts || []).find(a => String(a.id) === String(accId));
+      if(selectedAcc){
+        selectedAcc.balance = (parseFloat(selectedAcc.balance) || 0) + amount;
+      }
+    }
+
     if(!DB.incomes) DB.incomes = [];
     DB.incomes.unshift({
       id: Date.now(),
@@ -2650,14 +2674,14 @@ function addIncomeEntry(){
 
 function delIncomeEntry(id){
   if(!confirm('Delete this income record?')) return;
-  const inc = (DB.incomes || []).find(i => i.id === id);
+  const inc = (DB.incomes || []).find(i => String(i.id) === String(id));
   if(inc && inc.accountId){
-    const acc = (DB.bankAccounts || []).find(a => a.id === inc.accountId);
+    const acc = (DB.bankAccounts || []).find(a => String(a.id) === String(inc.accountId));
     if(acc){
       acc.balance = Math.max(0, (parseFloat(acc.balance) || 0) - (parseFloat(inc.amount) || 0));
     }
   }
-  DB.incomes = (DB.incomes || []).filter(i => i.id !== id);
+  DB.incomes = (DB.incomes || []).filter(i => String(i.id) !== String(id));
   sched();
   renderFinancePage();
 }
@@ -2693,7 +2717,7 @@ function addAccountEntry(){
 
 function delAccountEntry(id){
   if(!confirm('Delete this bank account?')) return;
-  DB.bankAccounts = (DB.bankAccounts || []).filter(a => a.id !== id);
+  DB.bankAccounts = (DB.bankAccounts || []).filter(a => String(a.id) !== String(id));
   sched();
   renderFinancePage();
 }
