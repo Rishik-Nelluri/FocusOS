@@ -1645,7 +1645,8 @@ function refreshCurrentView(){
   if(activePage==='tasks'){buildTCal();if(allTasksOpen)renderAllTasks();}
   if(activePage==='subjects')renderSubs();
   if(activePage==='dashboard')renderDash();
-  if(activePage==='timetables'){renderTTGrid();document.getElementById('nav-tt-list').classList.add('open');}
+  if(activePage==='timetables'){renderTTGrid();const nList=document.getElementById('nav-tt-list');if(nList)nList.classList.add('open');}
+  if(activePage==='tt-det'){if(curTT)renderTTDet();else nav('timetables');}
   if(activePage==='notes')renderNotesList();
   if(activePage==='pomodoro'){pomRender();updateNotifUI();}
   if(activePage==='streak')renderStreak();
@@ -1702,18 +1703,29 @@ function buildHM(){
 }
 
 function buildSched(){
-  const wrap=document.getElementById('d-sched');const tts=DB.timetables||[];const tt=tts[0];
-  if(!tt||!tt.blocks.length){wrap.innerHTML='<div class="tmuted" style="font-size:10px;">no timetable yet — create one in Timetables</div>';return;}
+  const wrap=document.getElementById('d-sched');if(!wrap)return;
+  const tts=DB.timetables||[];const tt=tts[0];
+  if(!tt||!tt.blocks||!tt.blocks.length){wrap.innerHTML='<div class="tmuted" style="font-size:10px;">no timetable yet — create one in Timetables</div>';return;}
   const now=new Date();const nm=now.getHours()*60+now.getMinutes();
   const CC={'cy':'var(--g)','bl':'var(--amber)','wv':'var(--blue)','co':'var(--red)','rt':'var(--t3)','cu':'var(--purple)','pi':'var(--pink)'};
   let html='';
-  tt.blocks.forEach(b=>{const[sh,sm]=b.start.split(':').map(Number);const[eh,em]=b.end.split(':').map(Number);
-    const smins=sh*60+sm,emins=eh*60+em;const cur=nm>=smins&&nm<emins;const past=nm>=emins;
-    const c=CC[catCls(b.cat)]||'var(--t2)';
+  tt.blocks.forEach(b=>{
+    const sStr = b.start || '00:00';
+    const eStr = b.end || '00:00';
+    const sParts = sStr.split(':').map(Number);
+    const eParts = eStr.split(':').map(Number);
+    const sh = sParts[0]||0, sm = sParts[1]||0;
+    const eh = eParts[0]||0, em = eParts[1]||0;
+    const smins = sh * 60 + sm;
+    let emins = eh * 60 + em;
+    if(emins < smins) emins += 1440;
+    const cur = nm >= smins && nm < emins;
+    const past = nm >= emins;
+    const c = CC[catCls(b.cat)] || 'var(--t2)';
     html+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);opacity:${past?.4:1};">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--t3);width:46px;flex-shrink:0;">${b.start}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--t3);width:46px;flex-shrink:0;">${sStr}</div>
       <div style="width:3px;height:22px;border-radius:2px;background:${c};flex-shrink:0;${cur?'box-shadow:0 0 7px '+c+';':''}"></div>
-      <div style="flex:1;font-family:var(--mono);font-size:11px;color:${cur?c:'var(--t1)'};">${b.title}${cur?` <span style="font-size:9px;background:${c};color:#060a0e;padding:1px 5px;border-radius:3px;margin-left:4px;">NOW</span>`:''}</div>
+      <div style="flex:1;font-family:var(--mono);font-size:11px;color:${cur?c:'var(--t1)'};">${b.title||'Untitled'}${cur?` <span style="font-size:9px;background:${c};color:#060a0e;padding:1px 5px;border-radius:3px;margin-left:4px;">NOW</span>`:''}</div>
     </div>`;
   });
   wrap.innerHTML=html||'<div class="tmuted">no blocks</div>';
@@ -1994,38 +2006,36 @@ function delAllT(k,i){const ts=getTasks(k);ts.splice(i,1);setTasks(k,ts);renderA
 let curTT=null;
 function getTTs(){return DB.timetables||[];}function setTTs(a){DB.timetables=a;sched();}
 let attfOpen=false;
-function toggleATTF(){attfOpen=!attfOpen;document.getElementById('add-ttf').classList.toggle('open',attfOpen);if(attfOpen)setTimeout(()=>document.getElementById('ntt-inp').focus(),50);}
-function addTT(){const inp=document.getElementById('ntt-inp');const n=inp.value.trim();if(!n)return;const tt={id:Date.now(),name:n,blocks:[]};const a=getTTs();a.push(tt);setTTs(a);inp.value='';toggleATTF();renderTTGrid();renderTTSB();openTT(tt.id);}
-function renderTTGrid(){const a=getTTs();const grid=document.getElementById('ttgrid');grid.innerHTML='';if(!a.length){grid.innerHTML='<div class="empty-st" style="grid-column:1/-1"><div class="empty-ico">🕐</div>no timetables yet</div>';return;}a.forEach(tt=>{const cats=[...new Set(tt.blocks.map(b=>b.cat))].slice(0,4);const c=document.createElement('div');c.className='ttc';c.onclick=()=>openTT(tt.id);c.innerHTML=`<div class="ttc-ico">📅</div><div class="ttc-name">${tt.name}</div><div class="ttc-meta">${tt.blocks.length} block${tt.blocks.length!==1?'s':''}</div><div class="ttc-pills">${cats.map(x=>`<span class="ttc-pill">${x}</span>`).join('')}${!cats.length?'<span style="font-family:var(--mono);font-size:10px;color:var(--t3)">no blocks yet</span>':''}</div>`;grid.appendChild(c);});}
-function renderTTSB(){const a=getTTs();const list=document.getElementById('nav-tt-list');list.innerHTML='';a.forEach(tt=>{const item=document.createElement('div');item.className='sub-ni'+(curTT&&curTT.id===tt.id?' active':'');item.innerHTML=`<span onclick="openTT(${tt.id})" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tt.name}</span><button class="sub-del" onclick="delTTSB(${tt.id},event)">✕</button>`;list.appendChild(item);});}
-function delTTSB(id,e){e.stopPropagation();const tt=getTTs().find(t=>t.id===id);if(!tt||!confirm(`Delete "${tt.name}"?`))return;setTTs(getTTs().filter(t=>t.id!==id));if(curTT&&curTT.id===id){curTT=null;nav('timetables');}renderTTSB();renderTTGrid();}
-function openTT(id){curTT=getTTs().find(t=>t.id===id);if(!curTT)return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-tt-det').classList.add('active');document.querySelectorAll('.ni').forEach(b=>b.classList.remove('active'));document.getElementById('nav-timetables').classList.add('active');document.getElementById('nav-tt-list').classList.add('open');document.getElementById('ttd-name').textContent=curTT.name;document.getElementById('ttd-bc').textContent=curTT.name;document.getElementById('tt-ren').value=curTT.name;document.getElementById('tt-edit').classList.remove('open');document.getElementById('add-bf').classList.remove('open');renderTTSB();renderTTDet();}
+function toggleATTF(){attfOpen=!attfOpen;const el=document.getElementById('add-ttf');if(el)el.classList.toggle('open',attfOpen);if(attfOpen)setTimeout(()=>document.getElementById('ntt-inp')&&document.getElementById('ntt-inp').focus(),50);}
+function addTT(){const inp=document.getElementById('ntt-inp');const n=inp?inp.value.trim():'';if(!n)return;const tt={id:Date.now(),name:n,blocks:[]};const a=getTTs();a.push(tt);setTTs(a);if(inp)inp.value='';toggleATTF();renderTTGrid();renderTTSB();openTT(tt.id);}
+function renderTTGrid(){const a=getTTs();const grid=document.getElementById('ttgrid');if(!grid)return;grid.innerHTML='';if(!a.length){grid.innerHTML='<div class="empty-st" style="grid-column:1/-1"><div class="empty-ico">🕐</div>no timetables yet</div>';return;}a.forEach(tt=>{const blocks=tt.blocks||[];const cats=[...new Set(blocks.map(b=>b.cat||'Other'))].slice(0,4);const c=document.createElement('div');c.className='ttc';c.onclick=()=>openTT(tt.id);c.innerHTML=`<div class="ttc-ico">📅</div><div class="ttc-name">${tt.name}</div><div class="ttc-meta">${blocks.length} block${blocks.length!==1?'s':''}</div><div class="ttc-pills">${cats.map(x=>`<span class="ttc-pill">${x}</span>`).join('')}${!cats.length?'<span style="font-family:var(--mono);font-size:10px;color:var(--t3)">no blocks yet</span>':''}</div>`;grid.appendChild(c);});}
+function renderTTSB(){const a=getTTs();const list=document.getElementById('nav-tt-list');if(!list)return;list.innerHTML='';a.forEach(tt=>{const item=document.createElement('div');item.className='sub-ni'+(curTT&&String(curTT.id)===String(tt.id)?' active':'');item.innerHTML=`<span onclick="openTT(${tt.id})" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tt.name}</span><button class="sub-del" onclick="delTTSB(${tt.id},event)">✕</button>`;list.appendChild(item);});}
+function delTTSB(id,e){if(e)e.stopPropagation();const tt=getTTs().find(t=>String(t.id)===String(id));if(!tt||!confirm(`Delete "${tt.name}"?`))return;setTTs(getTTs().filter(t=>String(t.id)!==String(id)));if(curTT&&String(curTT.id)===String(id)){curTT=null;nav('timetables');}renderTTSB();renderTTGrid();}
+function openTT(id){curTT=getTTs().find(t=>String(t.id)===String(id));if(!curTT)return;activePage='tt-det';document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const pDet=document.getElementById('page-tt-det');if(pDet)pDet.classList.add('active');document.querySelectorAll('.ni, .mn-item').forEach(b=>b.classList.remove('active'));const nTt=document.getElementById('nav-timetables');if(nTt)nTt.classList.add('active');const nList=document.getElementById('nav-tt-list');if(nList)nList.classList.add('open');const dName=document.getElementById('ttd-name');if(dName)dName.textContent=curTT.name;const dBc=document.getElementById('ttd-bc');if(dBc)dBc.textContent=curTT.name;const tRen=document.getElementById('tt-ren');if(tRen)tRen.value=curTT.name;const tEdit=document.getElementById('tt-edit');if(tEdit)tEdit.classList.remove('open');const aBf=document.getElementById('add-bf');if(aBf)aBf.classList.remove('open');renderTTSB();renderTTDet();}
 let tteOpen=false,abfOpen=false;
-function toggleTTE(){tteOpen=!tteOpen;document.getElementById('tt-edit').classList.toggle('open',tteOpen);if(tteOpen)setTimeout(()=>document.getElementById('tt-ren').focus(),50);}
-function renTT(){const n=document.getElementById('tt-ren').value.trim();if(!n){toggleTTE();return;}const a=getTTs();const t=a.find(t=>t.id===curTT.id);if(!t)return;t.name=n;setTTs(a);curTT=t;document.getElementById('ttd-name').textContent=n;document.getElementById('ttd-bc').textContent=n;toggleTTE();renderTTSB();renderTTGrid();}
-function delTTConf(){if(!confirm(`Delete "${curTT.name}"?`))return;setTTs(getTTs().filter(t=>t.id!==curTT.id));curTT=null;renderTTSB();nav('timetables');}
-function toggleABF(){abfOpen=!abfOpen;document.getElementById('add-bf').classList.toggle('open',abfOpen);if(abfOpen)setTimeout(()=>document.getElementById('bf-title').focus(),50);}
-function addBlock(){const s=document.getElementById('bf-start').value;const e=document.getElementById('bf-end').value;const t=document.getElementById('bf-title').value.trim();const c=document.getElementById('bf-cat').value.trim()||'Other';const d=document.getElementById('bf-desc').value.trim();if(!t||!s||!e)return;const a=getTTs();const tt=a.find(t=>t.id===curTT.id);tt.blocks.push({id:Date.now(),start:s,end:e,title:t,cat:c,desc:d});tt.blocks.sort((a,b)=>a.start.localeCompare(b.start));setTTs(a);curTT=tt;['bf-title','bf-cat','bf-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('add-bf').classList.remove('open');abfOpen=false;renderTTDet();}
+function toggleTTE(){tteOpen=!tteOpen;const el=document.getElementById('tt-edit');if(el)el.classList.toggle('open',tteOpen);if(tteOpen)setTimeout(()=>document.getElementById('tt-ren')&&document.getElementById('tt-ren').focus(),50);}
+function renTT(){if(!curTT)return;const n=document.getElementById('tt-ren').value.trim();if(!n){toggleTTE();return;}const a=getTTs();const t=a.find(item=>String(item.id)===String(curTT.id));if(!t)return;t.name=n;setTTs(a);curTT=t;document.getElementById('ttd-name').textContent=n;document.getElementById('ttd-bc').textContent=n;toggleTTE();renderTTSB();renderTTGrid();}
+function delTTConf(){if(!curTT||!confirm(`Delete "${curTT.name}"?`))return;const id=curTT.id;setTTs(getTTs().filter(t=>String(t.id)!==String(id)));curTT=null;renderTTSB();nav('timetables');}
+function toggleABF(){abfOpen=!abfOpen;const el=document.getElementById('add-bf');if(el)el.classList.toggle('open',abfOpen);if(abfOpen)setTimeout(()=>document.getElementById('bf-title')&&document.getElementById('bf-title').focus(),50);}
+function addBlock(){const sEl=document.getElementById('bf-start'), eEl=document.getElementById('bf-end'), tEl=document.getElementById('bf-title'), cEl=document.getElementById('bf-cat'), dEl=document.getElementById('bf-desc');const s=sEl?sEl.value:'';const e=eEl?eEl.value:'';const t=tEl?tEl.value.trim():'';const c=(cEl?cEl.value.trim():'')||'Other';const d=dEl?dEl.value.trim():'';if(!t||!s||!e||!curTT)return;const a=getTTs();const tt=a.find(item=>String(item.id)===String(curTT.id));if(!tt)return;if(!tt.blocks)tt.blocks=[];tt.blocks.push({id:Date.now(),start:s,end:e,title:t,cat:c,desc:d});tt.blocks.sort((x,y)=>(x.start||'').localeCompare(y.start||''));setTTs(a);curTT=tt;['bf-title','bf-cat','bf-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const bForm=document.getElementById('add-bf');if(bForm)bForm.classList.remove('open');abfOpen=false;renderTTDet();}
 function catCls(c){const l=(c||'').toLowerCase().replace(/\s+/g,'');if(l.includes('cyber')||l.includes('nmap')||l.includes('sec'))return'cy';if(l.includes('pin'))return'pi';if(l.includes('blog'))return'bl';if(l.includes('web')||l.includes('dev'))return'wv';if(l.includes('college'))return'co';if(l.includes('rest'))return'rt';return'cu';}
 const CCLRS={'cy':'var(--g)','bl':'var(--amber)','wv':'var(--blue)','co':'var(--red)','rt':'var(--t3)','cu':'var(--purple)','pi':'var(--pink)'};
 function renderTTDet(){
   if(!curTT)return;const blocks=curTT.blocks||[];const wrap=document.getElementById('tt-bwrap');const sum=document.getElementById('ttsum');const leg=document.getElementById('tt-legend');
-  if(!blocks.length){wrap.innerHTML='<div class="empty-st"><div class="empty-ico">🕐</div>no blocks — hit "+ add block" to start</div>';sum.style.display='none';leg.innerHTML='';return;}
+  if(!wrap)return;if(!blocks.length){wrap.innerHTML='<div class="empty-st"><div class="empty-ico">🕐</div>no blocks — hit "+ add block" to start</div>';if(sum)sum.style.display='none';if(leg)leg.innerHTML='';return;}
   const secs={Morning:[],Afternoon:[],Evening:[],Night:[]};
-  blocks.forEach(b=>{const h=parseInt(b.start.split(':')[0]);if(h<12)secs.Morning.push(b);else if(h<17)secs.Afternoon.push(b);else if(h<20)secs.Evening.push(b);else secs.Night.push(b);});
+  blocks.forEach(b=>{const startStr=b.start||'00:00';const h=parseInt(startStr.split(':')[0])||0;if(h<12)secs.Morning.push(b);else if(h<17)secs.Afternoon.push(b);else if(h<20)secs.Evening.push(b);else secs.Night.push(b);});
   let html='';
-  for(const[sec,blks] of Object.entries(secs)){if(!blks.length)continue;html+=`<div class="tt-slbl">${sec}</div>`;blks.forEach(b=>{const cl=catCls(b.cat);html+=`<div class="tb ${cl}" id="tb-${b.id}"><div class="tb-main"><div class="tb-time"><div class="tb-ts">${b.start}</div><div class="tb-te">${b.end}</div></div><div class="tb-body"><div class="tb-stripe"></div><div class="tb-info"><div class="tb-ttl">${b.title}</div>${b.desc?`<div class="tb-dsc">${b.desc}</div>`:''}</div><div class="tb-tag">${b.cat}</div><button class="tb-edit" onclick="openBE(${b.id})">✎ edit</button></div></div><div class="tb-ef" id="tbef-${b.id}"><div class="tb-efg"><div class="fgrp"><div class="flbl">start</div><input type="time" id="bes-${b.id}" value="${b.start}"/></div><div class="fgrp"><div class="flbl">end</div><input type="time" id="bee-${b.id}" value="${b.end}"/></div><div class="fgrp"><div class="flbl">title</div><input type="text" id="bet-${b.id}" value="${b.title}"/></div><div class="fgrp"><div class="flbl">category</div><input type="text" id="bec-${b.id}" value="${b.cat}" list="cat-dl"/></div></div><div class="fgrp" style="margin-bottom:8px;"><div class="flbl">description</div><input type="text" id="bed-${b.id}" value="${b.desc||''}"/></div><div class="tb-efr"><button class="btn bp bs" onclick="saveBE(${b.id})">save</button><button class="btn bg bs" onclick="closeBE(${b.id})">cancel</button><div style="flex:1;"></div><button class="btn bd bs" onclick="delB(${b.id})">delete</button></div></div></div>`;});
+  for(const[sec,blks] of Object.entries(secs)){if(!blks.length)continue;html+=`<div class="tt-slbl">${sec}</div>`;blks.forEach(b=>{const cl=catCls(b.cat);const startStr=b.start||'00:00';const endStr=b.end||'00:00';const titleStr=b.title||'Untitled';const catStr=b.cat||'Other';html+=`<div class="tb ${cl}" id="tb-${b.id}"><div class="tb-main"><div class="tb-time"><div class="tb-ts">${startStr}</div><div class="tb-te">${endStr}</div></div><div class="tb-body"><div class="tb-stripe"></div><div class="tb-info"><div class="tb-ttl">${titleStr}</div>${b.desc?`<div class="tb-dsc">${b.desc}</div>`:''}</div><div class="tb-tag">${catStr}</div><button class="tb-edit" onclick="openBE(${b.id})">✎ edit</button></div></div><div class="tb-ef" id="tbef-${b.id}"><div class="tb-efg"><div class="fgrp"><div class="flbl">start</div><input type="time" id="bes-${b.id}" value="${startStr}"/></div><div class="fgrp"><div class="flbl">end</div><input type="time" id="bee-${b.id}" value="${endStr}"/></div><div class="fgrp"><div class="flbl">title</div><input type="text" id="bet-${b.id}" value="${titleStr}"/></div><div class="fgrp"><div class="flbl">category</div><input type="text" id="bec-${b.id}" value="${catStr}" list="cat-dl"/></div></div><div class="fgrp" style="margin-bottom:8px;"><div class="flbl">description</div><input type="text" id="bed-${b.id}" value="${b.desc||''}"/></div><div class="tb-efr"><button class="btn bp bs" onclick="saveBE(${b.id})">save</button><button class="btn bg bs" onclick="closeBE(${b.id})">cancel</button><div style="flex:1;"></div><button class="btn bd bs" onclick="delB(${b.id})">delete</button></div></div></div>`;});
   }
   wrap.innerHTML=html;
-  const cats=[...new Set(blocks.map(b=>b.cat))];leg.innerHTML=cats.map(c=>`<div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:2px;background:${CCLRS[catCls(c)]||'var(--t3)'}"></div>${c}</div>`).join('');
-  const tots={};blocks.forEach(b=>{const[sh,sm]=b.start.split(':').map(Number);const[eh,em]=b.end.split(':').map(Number);const m=(eh*60+em)-(sh*60+sm);if(m>0)tots[b.cat]=(tots[b.cat]||0)+m;});
-  let sh='';for(const[cat,mins] of Object.entries(tots)){const hrs=mins/60;const dp=hrs>=1?(hrs%1===0?hrs+'h':hrs.toFixed(1)+'h'):mins+'m';sh+=`<div class="ttsc"><div class="ttsc-n" style="color:${CCLRS[catCls(cat)]||'var(--t1)'}">${dp}</div><div class="ttsc-l">${cat}</div></div>`;}
-  sum.innerHTML=sh;sum.style.display=Object.keys(tots).length?'grid':'none';
+  if(leg){const cats=[...new Set(blocks.map(b=>b.cat||'Other'))];leg.innerHTML=cats.map(c=>`<div style="display:flex;align-items:center;gap:5px;"><div style="width:7px;height:7px;border-radius:2px;background:${CCLRS[catCls(c)]||'var(--t3)'}"></div>${c}</div>`).join('');}
+  if(sum){const tots={};blocks.forEach(b=>{const startParts=(b.start||'00:00').split(':').map(Number);const endParts=(b.end||'00:00').split(':').map(Number);const sh=startParts[0]||0,sm=startParts[1]||0;const eh=endParts[0]||0,em=endParts[1]||0;const smins=sh*60+sm;let emins=eh*60+em;if(emins<smins)emins+=1440;const m=emins-smins;const catKey=b.cat||'Other';if(m>0)tots[catKey]=(tots[catKey]||0)+m;});let sh='';for(const[cat,mins] of Object.entries(tots)){const hrs=mins/60;const dp=hrs>=1?(hrs%1===0?hrs+'h':hrs.toFixed(1)+'h'):mins+'m';sh+=`<div class="ttsc"><div class="ttsc-n" style="color:${CCLRS[catCls(cat)]||'var(--t1)'}">${dp}</div><div class="ttsc-l">${cat}</div></div>`;}sum.innerHTML=sh;sum.style.display=Object.keys(tots).length?'grid':'none';}
 }
-function openBE(id){document.querySelectorAll('.tb-ef.open').forEach(f=>f.classList.remove('open'));document.getElementById('tbef-'+id).classList.add('open');}
-function closeBE(id){document.getElementById('tbef-'+id).classList.remove('open');}
-function saveBE(id){const a=getTTs();const t=a.find(t=>t.id===curTT.id);const b=t.blocks.find(b=>b.id===id);if(!b)return;b.start=document.getElementById('bes-'+id).value;b.end=document.getElementById('bee-'+id).value;b.title=document.getElementById('bet-'+id).value.trim()||b.title;b.cat=document.getElementById('bec-'+id).value.trim()||b.cat;b.desc=document.getElementById('bed-'+id).value.trim();t.blocks.sort((a,b)=>a.start.localeCompare(b.start));setTTs(a);curTT=t;renderTTDet();}
-function delB(id){const a=getTTs();const t=a.find(t=>t.id===curTT.id);t.blocks=t.blocks.filter(b=>b.id!==id);setTTs(a);curTT=t;renderTTSB();renderTTDet();}
+function openBE(id){document.querySelectorAll('.tb-ef.open').forEach(f=>f.classList.remove('open'));const el=document.getElementById('tbef-'+id);if(el)el.classList.add('open');}
+function closeBE(id){const el=document.getElementById('tbef-'+id);if(el)el.classList.remove('open');}
+function saveBE(id){if(!curTT)return;const a=getTTs();const t=a.find(item=>String(item.id)===String(curTT.id));if(!t||!t.blocks)return;const b=t.blocks.find(item=>String(item.id)===String(id));if(!b)return;const sEl=document.getElementById('bes-'+id), eEl=document.getElementById('bee-'+id), tEl=document.getElementById('bet-'+id), cEl=document.getElementById('bec-'+id), dEl=document.getElementById('bed-'+id);if(sEl)b.start=sEl.value||b.start;if(eEl)b.end=eEl.value||b.end;if(tEl)b.title=tEl.value.trim()||b.title;if(cEl)b.cat=cEl.value.trim()||b.cat;if(dEl)b.desc=dEl.value.trim();t.blocks.sort((x,y)=>(x.start||'').localeCompare(y.start||''));setTTs(a);curTT=t;renderTTDet();}
+function delB(id){if(!curTT)return;const a=getTTs();const t=a.find(item=>String(item.id)===String(curTT.id));if(!t||!t.blocks)return;t.blocks=t.blocks.filter(b=>String(b.id)!==String(id));setTTs(a);curTT=t;renderTTSB();renderTTDet();}
 
 // SIDEBAR TOGGLE & BACKDROP OVERLAY
 function toggleSB(){
@@ -2923,6 +2933,7 @@ document.addEventListener('keydown', e => {
 
   if(e.key==='Enter'&&document.activeElement.id==='ns-inp')addSubject();
   if(e.key==='Enter'&&document.activeElement.id==='ntt-inp')addTT();
+  if(e.key==='Enter'&&(document.activeElement.id==='bf-title'||document.activeElement.id==='bf-cat'||document.activeElement.id==='bf-desc'))addBlock();
   if((e.metaKey||e.ctrlKey)&&e.key==='1'){e.preventDefault();nav('dashboard');}
   if((e.metaKey||e.ctrlKey)&&e.key==='2'){e.preventDefault();nav('subjects');}
   if((e.metaKey||e.ctrlKey)&&e.key==='3'){e.preventDefault();nav('tasks');}
