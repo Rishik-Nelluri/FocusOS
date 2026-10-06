@@ -279,8 +279,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .note-title-inp::placeholder{color:var(--t4);}.note-title-inp:focus{box-shadow:none;}
 .note-body-inp{font-family:var(--mono);font-size:12px;color:var(--t2);background:none;border:none;flex:1;min-height:240px;line-height:1.9;padding:0;resize:none;outline:none;}
 .note-body-inp::placeholder{color:var(--t4);}.note-body-inp:focus{box-shadow:none;}
-.note-meta{font-family:var(--mono);font-size:9px;color:var(--t4);margin-bottom:14px;}
 .mobile-back-notes{display:none;margin-bottom:12px;}
+.sub-notes-layout{display:grid;grid-template-columns:250px 1fr;min-height:520px;background:var(--bg1);border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;}
+.sub-topics-sb{border-right:1px solid var(--line);padding:14px;background:var(--bg1);overflow-y:auto;overflow-x:hidden;min-width:0;}
+.sub-topics-ed{padding:24px 28px;overflow-y:auto;display:flex;flex-direction:column;background:var(--bg);min-width:0;}
+.mobile-back-subtopics{display:none;margin-bottom:12px;}
 /* MISC */
 .del-btn{width:24px;height:24px;border-radius:6px;border:none;background:none;cursor:pointer;color:var(--t3);font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;}
 .del-btn:hover{background:var(--redd);color:var(--red);}
@@ -554,11 +557,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     box-sizing:border-box!important;
   }
   
-  .sbar{grid-template-columns:1fr;}
   .notes-layout{grid-template-columns:1fr;height:100%;}
+  .sub-notes-layout{grid-template-columns:1fr!important;min-height:auto!important;}
   .notes-sb.mob-hide{display:none;}
   .notes-ed.mob-hide{display:none;}
+  .sub-topics-sb.mob-hide{display:none!important;}
+  .sub-topics-ed.mob-hide{display:none!important;}
   .mobile-back-notes{display:inline-flex;}
+  .mobile-back-subtopics{display:inline-flex!important;}
   .tb-edit{opacity:1;}
   .tb-ef{padding:12px;}
   .tb-efg{grid-template-columns:1fr;}
@@ -736,16 +742,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
                 <!-- TAB 2: CLASS TOPICS & NOTES -->
                 <div id="sub-tab-notes-view" style="display:none;">
-                    <div class="notes-layout" style="min-height:500px;background:var(--bg1);border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;">
-                        <div class="notes-sb" id="sub-topics-sb" style="width:280px;border-right:1px solid var(--line);padding:14px;background:var(--bg1);overflow-y:auto;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                                <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;">Class Topics Index</div>
-                                <button class="btn bp bs" onclick="newSubTopic()">+ topic</button>
+                    <div class="sub-notes-layout">
+                        <div class="sub-topics-sb" id="sub-topics-sb">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:6px;">
+                                <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Topics Index</div>
+                                <button class="btn bp bs" onclick="newSubTopic()" style="padding:4px 8px;font-size:10px;flex-shrink:0;">+ topic</button>
                             </div>
-                            <input type="text" id="sub-topic-search" placeholder="Search topics..." oninput="renderSubTopicList()" style="margin-bottom:10px;padding:6px 10px;font-size:11px;" />
+                            <input type="text" id="sub-topic-search" placeholder="Search topics..." oninput="renderSubTopicList()" style="margin-bottom:10px;padding:6px 10px;font-size:11px;width:100%;box-sizing:border-box;" />
                             <div id="sub-topics-list"></div>
                         </div>
-                        <div class="notes-ed" id="sub-topic-ed" style="padding:24px 28px;overflow-y:auto;display:flex;flex-direction:column;background:var(--bg);">
+                        <div class="sub-topics-ed" id="sub-topic-ed">
                             <div class="empty-st" style="margin:auto;"><div class="empty-ico">📖</div>Select a topic from the index or create a new topic note</div>
                         </div>
                     </div>
@@ -1788,6 +1794,23 @@ function openSub(n){
   if(countEl) countEl.textContent = topics.length;
 }
 
+function showSubTopicsListMobile(){
+  if(window.innerWidth <= 768){
+    const sb = document.getElementById('sub-topics-sb');
+    const ed = document.getElementById('sub-topic-ed');
+    if(sb) sb.classList.remove('mob-hide');
+    if(ed) ed.classList.add('mob-hide');
+  }
+}
+function showSubTopicEditorMobile(){
+  if(window.innerWidth <= 768){
+    const sb = document.getElementById('sub-topics-sb');
+    const ed = document.getElementById('sub-topic-ed');
+    if(sb) sb.classList.add('mob-hide');
+    if(ed) ed.classList.remove('mob-hide');
+  }
+}
+
 function switchSubTab(tab){
   curSubTab = tab;
   const calBtn = document.getElementById('sub-tab-cal-btn');
@@ -1800,6 +1823,7 @@ function switchSubTab(tab){
     if(notesBtn){ notesBtn.className = 'btn bp bs'; }
     if(calView){ calView.style.display = 'none'; }
     if(notesView){ notesView.style.display = 'block'; }
+    showSubTopicsListMobile();
     renderSubNotesTab();
   } else {
     if(calBtn){ calBtn.className = 'btn bp bs'; }
@@ -1917,6 +1941,7 @@ function openSubTopic(id){
   if(!topic) return;
 
   renderSubTopicList();
+  showSubTopicEditorMobile();
   const ed = document.getElementById('sub-topic-ed');
   if(!ed) return;
 
@@ -1924,6 +1949,7 @@ function openSubTopic(id){
 
   ed.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <button class="btn bg bs mobile-back-subtopics" onclick="showSubTopicsListMobile()">‹ back to topics index</button>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;">📅 Link to Calendar Day:</div>
         <input type="date" id="st-date-inp" value="${linkedDateStr}" style="max-width:145px;padding:4px 8px;font-size:11px;" onchange="saveSubTopicDate('${id}')" />
