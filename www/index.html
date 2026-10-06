@@ -1447,22 +1447,40 @@ function setSS(s){
   ['slbl','slbl2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});
 }
 
+async function parseNtfyMsg(msg){
+  if(!msg) return null;
+  if(msg.attachment && msg.attachment.url){
+    try {
+      const res = await fetch(msg.attachment.url);
+      if(res.ok) return await res.json();
+    } catch(e){}
+  }
+  if(msg.message){
+    try {
+      return JSON.parse(msg.message);
+    } catch(e){}
+  }
+  return null;
+}
+
 async function persist(){
   setSS('saving');
   try{
     if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
     DB.settings.lockEnabled = true;
     localStorage.setItem('fos', JSON.stringify(DB));
+
     if(syncKey){
-      if(firebaseDbRef){
-        await firebaseDbRef.set(DB);
-      } else {
-        await fetch(`${DB_URL}sync/${encodeURIComponent(syncKey)}.json`, {
-          method: 'PUT',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(DB)
-        });
-      }
+      const topic = 'focusos_sync_' + encodeURIComponent(syncKey.trim());
+      const res = await fetch(`https://ntfy.sh/${topic}`, {
+        method: 'POST',
+        headers: {
+          'Title': 'DB_SYNC',
+          'Tags': 'sync'
+        },
+        body: JSON.stringify(DB)
+      });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
     }
     setSS('saved');
   }catch(e){
@@ -1480,43 +1498,47 @@ function initRealtimeCloudSync(){
   if(!syncKey) return;
   setSS('saving');
 
-  try {
-    if(typeof firebase !== 'undefined'){
-      if(!firebaseApp){
-        firebaseApp = firebase.initializeApp({ databaseURL: DB_URL }, 'focusOSApp');
+  if(sseSource){
+    try { sseSource.close(); } catch(e){}
+    sseSource = null;
+  }
+
+  const topic = 'focusos_sync_' + encodeURIComponent(syncKey.trim());
+
+  fetch(`https://ntfy.sh/${topic}/json?poll=1`)
+    .then(res => res.text())
+    .then(async text => {
+      const lines = text.trim().split('\n');
+      let latestMsg = null;
+      for(let line of lines){
+        if(!line.trim()) continue;
+        try {
+          const m = JSON.parse(line);
+          if(m.event === 'message') latestMsg = m;
+        } catch(e){}
       }
-      const rtdb = firebase.database(firebaseApp);
-      if(firebaseDbRef) firebaseDbRef.off();
-      firebaseDbRef = rtdb.ref('sync/' + syncKey);
-      
-      firebaseDbRef.on('value', (snapshot) => {
-        const val = snapshot.val();
-        if(val && typeof val === 'object'){
-          applyCloudData(val);
+      if(latestMsg){
+        const payload = await parseNtfyMsg(latestMsg);
+        if(payload){
+          applyCloudData(payload);
         } else {
           setSS('saved');
         }
-      }, (err) => {
-        setupEventSourceFallback();
-      });
-      return;
-    }
-  } catch(e) {}
+      } else {
+        persist();
+      }
+    })
+    .catch(() => { setSS('saved'); });
 
-  setupEventSourceFallback();
-}
-
-function setupEventSourceFallback(){
-  if(sseSource) { try { sseSource.close(); } catch(e){} }
   try {
-    sseSource = new EventSource(`${DB_URL}sync/${encodeURIComponent(syncKey)}.json`);
-    sseSource.onmessage = function(event) {
+    sseSource = new EventSource(`https://ntfy.sh/${topic}/sse`);
+    sseSource.onmessage = async function(event) {
       if(!event.data) return;
       try {
-        const payload = JSON.parse(event.data);
-        const data = payload.data !== undefined ? payload.data : payload;
-        if(data && typeof data === 'object'){
-          applyCloudData(data);
+        const msg = JSON.parse(event.data);
+        if(msg.event === 'message'){
+          const data = await parseNtfyMsg(msg);
+          if(data) applyCloudData(data);
         }
       } catch(err){}
     };
@@ -1524,22 +1546,50 @@ function setupEventSourceFallback(){
       setSS('error');
     };
   } catch(err){
-    startPollingFallback();
+    setSS('error');
   }
 }
 
-function startPollingFallback(){
-  setInterval(async () => {
-    try{
-      const res = await fetch(`${DB_URL}sync/${encodeURIComponent(syncKey)}.json`);
-      if(res.ok){
-        const data = await res.json();
-        if(data && typeof data === 'object'){
-          applyCloudData(data);
-        }
-      }
-    }catch(e){}
-  }, 3500);
+function ensureArray(val){
+  if(Array.isArray(val)) return val;
+  if(val && typeof val === 'object') return Object.values(val);
+  return [];
+}
+
+function sanitizeDB(data){
+  if(!data || typeof data !== 'object') data = {};
+  const currentPin = (typeof DB !== 'undefined' && DB && DB.settings && DB.settings.pin) ? DB.settings.pin : '1234';
+
+  const cleanDB = {
+    subjects: ensureArray(data.subjects),
+    entries: (data.entries && typeof data.entries === 'object') ? data.entries : {},
+    tasks: (data.tasks && typeof data.tasks === 'object') ? data.tasks : {},
+    timetables: ensureArray(data.timetables),
+    notes: ensureArray(data.notes),
+    settings: Object.assign({pin: currentPin, lockEnabled: true}, data.settings || {}),
+    passwords: ensureArray(data.passwords),
+    expenses: ensureArray(data.expenses),
+    incomes: ensureArray(data.incomes),
+    bankAccounts: ensureArray(data.bankAccounts),
+    classNotes: (data.classNotes && typeof data.classNotes === 'object') ? data.classNotes : {}
+  };
+
+  cleanDB.settings.lockEnabled = true;
+  if(!cleanDB.settings.pin) cleanDB.settings.pin = currentPin;
+
+  for(let k in cleanDB.tasks){
+    if(cleanDB.tasks[k]) cleanDB.tasks[k] = ensureArray(cleanDB.tasks[k]);
+  }
+  for(let k in cleanDB.classNotes){
+    if(cleanDB.classNotes[k]) cleanDB.classNotes[k] = ensureArray(cleanDB.classNotes[k]);
+  }
+  for(let k in cleanDB.entries){
+    if(cleanDB.entries[k] && typeof cleanDB.entries[k] !== 'object'){
+      cleanDB.entries[k] = {};
+    }
+  }
+
+  return cleanDB;
 }
 
 function applyCloudData(data){
@@ -1547,7 +1597,8 @@ function applyCloudData(data){
   const activeEl = document.activeElement;
   const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
 
-  const cloudStr = JSON.stringify(data);
+  const cleanData = sanitizeDB(data);
+  const cloudStr = JSON.stringify(cleanData);
   const localStr = JSON.stringify(DB);
   if(cloudStr === localStr){
     setSS('saved');
@@ -1555,13 +1606,7 @@ function applyCloudData(data){
   }
 
   isRemoteUpdating = true;
-  const currentPin = (DB.settings && DB.settings.pin) ? DB.settings.pin : '1234';
-  DB = Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[],incomes:[],bankAccounts:[]}, data);
-  if(!DB.expenses) DB.expenses = [];
-  if(!DB.incomes) DB.incomes = [];
-  if(!DB.bankAccounts) DB.bankAccounts = [];
-  DB.settings = Object.assign({pin: currentPin, lockEnabled: true}, data.settings || {});
-  DB.settings.lockEnabled = true;
+  DB = cleanData;
   localStorage.setItem('fos', JSON.stringify(DB));
 
   if(!isTyping){
@@ -1614,22 +1659,13 @@ async function loadData(){
     const ls=localStorage.getItem('fos');
     if(ls){
       const parsed = JSON.parse(ls);
-      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[],incomes:[],bankAccounts:[],classNotes:{}}, parsed);
-      if(!DB.expenses) DB.expenses = [];
-      if(!DB.incomes) DB.incomes = [];
-      if(!DB.bankAccounts) DB.bankAccounts = [];
-      if(!DB.classNotes) DB.classNotes = {};
-      DB.settings = Object.assign({pin:'1234', lockEnabled:true}, parsed.settings || {});
+      DB = sanitizeDB(parsed);
+    } else {
+      DB = sanitizeDB({});
     }
-  }catch(e){}
-  if(!DB.settings) DB.settings = {pin:'1234', lockEnabled:true};
-  DB.settings.lockEnabled = true;
-  if(!DB.settings.pin) DB.settings.pin = '1234';
-  if(!DB.passwords) DB.passwords = [];
-  if(!DB.expenses) DB.expenses = [];
-  if(!DB.incomes) DB.incomes = [];
-  if(!DB.bankAccounts) DB.bankAccounts = [];
-  if(!DB.classNotes) DB.classNotes = {};
+  }catch(e){
+    DB = sanitizeDB({});
+  }
   initRealtimeCloudSync();
 }
 
