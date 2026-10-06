@@ -715,7 +715,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                     <div class="sblock"><div class="sblock-val" id="st-days">0</div><div class="sblock-lbl">sessions</div></div>
                     <div class="sblock"><div class="sblock-val" id="st-goals">0</div><div class="sblock-lbl">goals done</div></div>
                 </div>
-                <div class="det-layout">
+
+                <!-- SUBJECT NAVIGATION TABS -->
+                <div style="display:flex;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--line);padding-bottom:12px;">
+                    <button class="btn bp bs" id="sub-tab-cal-btn" onclick="switchSubTab('cal')">📅 Calendar &amp; Logs</button>
+                    <button class="btn bg bs" id="sub-tab-notes-btn" onclick="switchSubTab('notes')">📖 Class Topics &amp; Notes (<span id="sub-notes-count">0</span>)</button>
+                </div>
+
+                <!-- TAB 1: CALENDAR & ACTIVITY -->
+                <div id="sub-tab-cal-view" class="det-layout">
                     <div>
                         <div class="cal-card">
                             <div class="cal-nav"><div class="cal-title" id="s-cal-month"></div><div style="display:flex;gap:4px;"><button class="btn bico bs" onclick="scm(-1)">‹</button><button class="btn bico bs" onclick="scm(1)">›</button></div></div>
@@ -724,6 +732,23 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
                         <div id="entry-panel" style="display:none;"></div>
                     </div>
                     <div id="sub-rp"></div>
+                </div>
+
+                <!-- TAB 2: CLASS TOPICS & NOTES -->
+                <div id="sub-tab-notes-view" style="display:none;">
+                    <div class="notes-layout" style="min-height:500px;background:var(--bg1);border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;">
+                        <div class="notes-sb" id="sub-topics-sb" style="width:280px;border-right:1px solid var(--line);padding:14px;background:var(--bg1);overflow-y:auto;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                                <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;">Class Topics Index</div>
+                                <button class="btn bp bs" onclick="newSubTopic()">+ topic</button>
+                            </div>
+                            <input type="text" id="sub-topic-search" placeholder="Search topics..." oninput="renderSubTopicList()" style="margin-bottom:10px;padding:6px 10px;font-size:11px;" />
+                            <div id="sub-topics-list"></div>
+                        </div>
+                        <div class="notes-ed" id="sub-topic-ed" style="padding:24px 28px;overflow-y:auto;display:flex;flex-direction:column;background:var(--bg);">
+                            <div class="empty-st" style="margin:auto;"><div class="empty-ico">📖</div>Select a topic from the index or create a new topic note</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1583,10 +1608,11 @@ async function loadData(){
     const ls=localStorage.getItem('fos');
     if(ls){
       const parsed = JSON.parse(ls);
-      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[],incomes:[],bankAccounts:[]}, parsed);
+      DB=Object.assign({subjects:[],entries:{},tasks:{},timetables:[],notes:[],passwords:[],expenses:[],incomes:[],bankAccounts:[],classNotes:{}}, parsed);
       if(!DB.expenses) DB.expenses = [];
       if(!DB.incomes) DB.incomes = [];
       if(!DB.bankAccounts) DB.bankAccounts = [];
+      if(!DB.classNotes) DB.classNotes = {};
       DB.settings = Object.assign({pin:'1234', lockEnabled:true}, parsed.settings || {});
     }
   }catch(e){}
@@ -1597,6 +1623,7 @@ async function loadData(){
   if(!DB.expenses) DB.expenses = [];
   if(!DB.incomes) DB.incomes = [];
   if(!DB.bankAccounts) DB.bankAccounts = [];
+  if(!DB.classNotes) DB.classNotes = {};
   initRealtimeCloudSync();
 }
 
@@ -1747,13 +1774,223 @@ function renderSubs(){
 
 // SUBJECT DETAIL
 let curSub=null,sY=TODAY.getFullYear(),sM=TODAY.getMonth(),sSelDk=null,seOpen=false;
+let curSubTab='cal', curSubTopicId=null;
+
 function openSub(n){
-  curSub=n;sY=TODAY.getFullYear();sM=TODAY.getMonth();sSelDk=null;
+  curSub=n;sY=TODAY.getFullYear();sM=TODAY.getMonth();sSelDk=null;curSubTab='cal';curSubTopicId=null;
   document.getElementById('cal-sub-name').textContent=n;document.getElementById('cal-sub-bc').textContent=n;document.getElementById('sub-ren').value=n;
   document.getElementById('sub-edit').classList.remove('open');seOpen=false;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-subject-cal').classList.add('active');
   updSStats();buildSCal();document.getElementById('entry-panel').style.display='none';renderSubRP();
+  switchSubTab('cal');
+  const topics = getSubTopics(n);
+  const countEl = document.getElementById('sub-notes-count');
+  if(countEl) countEl.textContent = topics.length;
 }
+
+function switchSubTab(tab){
+  curSubTab = tab;
+  const calBtn = document.getElementById('sub-tab-cal-btn');
+  const notesBtn = document.getElementById('sub-tab-notes-btn');
+  const calView = document.getElementById('sub-tab-cal-view');
+  const notesView = document.getElementById('sub-tab-notes-view');
+
+  if(tab === 'notes'){
+    if(calBtn){ calBtn.className = 'btn bg bs'; }
+    if(notesBtn){ notesBtn.className = 'btn bp bs'; }
+    if(calView){ calView.style.display = 'none'; }
+    if(notesView){ notesView.style.display = 'block'; }
+    renderSubNotesTab();
+  } else {
+    if(calBtn){ calBtn.className = 'btn bp bs'; }
+    if(notesBtn){ notesBtn.className = 'btn bg bs'; }
+    if(calView){ calView.style.display = 'grid'; }
+    if(notesView){ notesView.style.display = 'none'; }
+  }
+}
+
+function getSubTopics(subName){
+  if(!DB.classNotes) DB.classNotes = {};
+  if(!DB.classNotes[subName]) DB.classNotes[subName] = [];
+  return DB.classNotes[subName];
+}
+
+function setSubTopics(subName, topics){
+  if(!DB.classNotes) DB.classNotes = {};
+  DB.classNotes[subName] = topics;
+  const countEl = document.getElementById('sub-notes-count');
+  if(countEl) countEl.textContent = topics.length;
+  sched();
+}
+
+function renderSubNotesTab(){
+  if(!curSub) return;
+  const topics = getSubTopics(curSub);
+  const countEl = document.getElementById('sub-notes-count');
+  if(countEl) countEl.textContent = topics.length;
+
+  renderSubTopicList();
+
+  if(curSubTopicId && topics.some(t => String(t.id) === String(curSubTopicId))){
+    openSubTopic(curSubTopicId);
+  } else if(topics.length > 0){
+    openSubTopic(topics[0].id);
+  } else {
+    curSubTopicId = null;
+    const ed = document.getElementById('sub-topic-ed');
+    if(ed){
+      ed.innerHTML = '<div class="empty-st" style="margin:auto;"><div class="empty-ico">📖</div>No topics created yet for this subject.<br/><button class="btn bp bs" style="margin-top:12px;" onclick="newSubTopic()">+ Create First Topic</button></div>';
+    }
+  }
+}
+
+function renderSubTopicList(){
+  if(!curSub) return;
+  const list = document.getElementById('sub-topics-list');
+  if(!list) return;
+
+  const searchInp = document.getElementById('sub-topic-search');
+  const query = searchInp ? searchInp.value.trim().toLowerCase() : '';
+  let topics = getSubTopics(curSub);
+
+  if(query){
+    topics = topics.filter(t => (t.title||'').toLowerCase().includes(query) || (t.content||'').toLowerCase().includes(query));
+  }
+
+  topics.sort((a,b) => (b.updated || b.created || 0) - (a.updated || a.created || 0));
+
+  list.innerHTML = '';
+  if(!topics.length){
+    list.innerHTML = '<div class="tmuted" style="font-size:10px;padding:8px 0;">' + (query ? 'no matching topics' : 'no topics yet') + '</div>';
+    return;
+  }
+
+  topics.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'note-item' + (String(t.id) === String(curSubTopicId) ? ' active' : '');
+    el.onclick = () => openSubTopic(t.id);
+    
+    const dateBadge = t.date ? `<span class="pill pd" style="font-size:8.5px;padding:1px 5px;">📅 ${t.date}</span>` : '';
+    const snippet = (t.content || '').replace(/#+\s*/g, '').slice(0, 45) || '—';
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+        <div class="ni-title" style="flex:1;">${t.title || 'Untitled Topic'}</div>
+        <button class="del-btn" style="padding:2px 4px;font-size:11px;" onclick="event.stopPropagation();delSubTopic('${t.id}')" title="Delete Topic">🗑</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:2px;margin-bottom:3px;">${dateBadge}</div>
+      <div class="ni-pre">${snippet}</div>
+    `;
+    list.appendChild(el);
+  });
+}
+
+function newSubTopic(linkedDate){
+  if(!curSub) return;
+  const topics = getSubTopics(curSub);
+  const newId = 'cn_' + Date.now();
+  const titleDefault = linkedDate ? `Class Topic (${linkedDate})` : `Topic ${topics.length + 1}`;
+  
+  const newTopic = {
+    id: newId,
+    title: titleDefault,
+    content: '',
+    date: linkedDate || '',
+    created: Date.now(),
+    updated: Date.now()
+  };
+
+  topics.unshift(newTopic);
+  setSubTopics(curSub, topics);
+  switchSubTab('notes');
+  openSubTopic(newId);
+  setTimeout(() => {
+    const tInp = document.getElementById('st-title-inp');
+    if(tInp) tInp.focus();
+  }, 100);
+}
+
+function openSubTopic(id){
+  curSubTopicId = id;
+  const topics = getSubTopics(curSub);
+  const topic = topics.find(t => String(t.id) === String(id));
+  if(!topic) return;
+
+  renderSubTopicList();
+  const ed = document.getElementById('sub-topic-ed');
+  if(!ed) return;
+
+  const linkedDateStr = topic.date || '';
+
+  ed.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;">📅 Link to Calendar Day:</div>
+        <input type="date" id="st-date-inp" value="${linkedDateStr}" style="max-width:145px;padding:4px 8px;font-size:11px;" onchange="saveSubTopicDate('${id}')" />
+        ${linkedDateStr ? `<button class="btn bg bs" onclick="openSEFromTopic('${linkedDateStr}')" title="Jump to Calendar Entry">📅 Open Entry (${linkedDateStr})</button>` : ''}
+      </div>
+      <button class="btn bd bs" onclick="delSubTopic('${id}')">🗑 delete topic</button>
+    </div>
+    <div class="note-meta">// Last edited ${new Date(topic.updated || topic.created || Date.now()).toLocaleString('en-IN')}</div>
+    <input class="note-title-inp" id="st-title-inp" value="${(topic.title || '').replace(/"/g, '&quot;')}" placeholder="Topic Title (e.g. Binary Search Trees)..." oninput="schedSubTopic('${id}')" />
+    <textarea class="note-body-inp" id="st-body-inp" placeholder="// Write class notes for this topic..." oninput="schedSubTopic('${id}')">${topic.content || ''}</textarea>
+  `;
+}
+
+let subTopicSaveTimer = null;
+function schedSubTopic(id){
+  clearTimeout(subTopicSaveTimer);
+  subTopicSaveTimer = setTimeout(() => {
+    if(!curSub) return;
+    const topics = getSubTopics(curSub);
+    const topic = topics.find(t => String(t.id) === String(id));
+    if(!topic) return;
+
+    const tInp = document.getElementById('st-title-inp');
+    const bInp = document.getElementById('st-body-inp');
+    if(tInp) topic.title = tInp.value;
+    if(bInp) topic.content = bInp.value;
+    topic.updated = Date.now();
+
+    setSubTopics(curSub, topics);
+    renderSubTopicList();
+    if(buildSCal) buildSCal();
+  }, 400);
+}
+
+function saveSubTopicDate(id){
+  if(!curSub) return;
+  const topics = getSubTopics(curSub);
+  const topic = topics.find(t => String(t.id) === String(id));
+  if(!topic) return;
+
+  const dInp = document.getElementById('st-date-inp');
+  topic.date = dInp ? dInp.value : '';
+  topic.updated = Date.now();
+
+  setSubTopics(curSub, topics);
+  openSubTopic(id);
+  if(buildSCal) buildSCal();
+}
+
+function delSubTopic(id){
+  if(!curSub) return;
+  const topics = getSubTopics(curSub);
+  const topic = topics.find(t => String(t.id) === String(id));
+  if(!topic || !confirm(`Delete topic "${topic.title || 'Untitled'}"?`)) return;
+
+  const newTopics = topics.filter(t => String(t.id) !== String(id));
+  setSubTopics(curSub, newTopics);
+  if(curSubTopicId === id) curSubTopicId = null;
+  renderSubNotesTab();
+  if(buildSCal) buildSCal();
+}
+
+function openSEFromTopic(dateStr){
+  switchSubTab('cal');
+  openSE(new Date(dateStr + 'T00:00:00'), dateStr);
+}
+
 function renderSubRP(){
   const wrap=document.getElementById('sub-rp');const e=DB.entries[curSub]||{};
   const entries=Object.entries(e).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,6);
@@ -1765,8 +2002,24 @@ function renderSubRP(){
   wrap.innerHTML=html;
 }
 function toggleSE(){seOpen=!seOpen;document.getElementById('sub-edit').classList.toggle('open',seOpen);if(seOpen)setTimeout(()=>document.getElementById('sub-ren').focus(),50);}
-function renSub(){const n=document.getElementById('sub-ren').value.trim();if(!n||n===curSub){toggleSE();return;}if(DB.subjects.includes(n)){alert('Name taken.');return;}const i=DB.subjects.indexOf(curSub);if(i===-1)return;DB.subjects[i]=n;if(DB.entries[curSub]){DB.entries[n]=DB.entries[curSub];delete DB.entries[curSub];}sched();curSub=n;document.getElementById('cal-sub-name').textContent=n;document.getElementById('cal-sub-bc').textContent=n;toggleSE();}
-function delSubConf(){if(!confirm(`Delete "${curSub}" and all its data?`))return;const i=DB.subjects.indexOf(curSub);if(i>-1)DB.subjects.splice(i,1);delete DB.entries[curSub];sched();nav('subjects');}
+function renSub(){
+  const n=document.getElementById('sub-ren').value.trim();
+  if(!n||n===curSub){toggleSE();return;}
+  if(DB.subjects.includes(n)){alert('Name taken.');return;}
+  const i=DB.subjects.indexOf(curSub);if(i===-1)return;
+  DB.subjects[i]=n;
+  if(DB.entries[curSub]){DB.entries[n]=DB.entries[curSub];delete DB.entries[curSub];}
+  if(DB.classNotes && DB.classNotes[curSub]){DB.classNotes[n]=DB.classNotes[curSub];delete DB.classNotes[curSub];}
+  sched();curSub=n;
+  document.getElementById('cal-sub-name').textContent=n;document.getElementById('cal-sub-bc').textContent=n;toggleSE();
+}
+function delSubConf(){
+  if(!confirm(`Delete "${curSub}" and all its data?`))return;
+  const i=DB.subjects.indexOf(curSub);if(i>-1)DB.subjects.splice(i,1);
+  delete DB.entries[curSub];
+  if(DB.classNotes) delete DB.classNotes[curSub];
+  sched();nav('subjects');
+}
 function updSStats(){const st=getSSt(curSub);document.getElementById('st-hrs').textContent=st.hrs.toFixed(1);document.getElementById('st-days').textContent=st.days;document.getElementById('st-goals').textContent=st.goals;}
 function getEntry(s,k){return(DB.entries[s]&&DB.entries[s][k])||{log:'',hours:0,goals:[],links:[]};}
 function setEntry(s,k,d){if(!DB.entries[s])DB.entries[s]={};DB.entries[s][k]=d;sched();}
@@ -1776,8 +2029,19 @@ function buildSCal(){
   ['S','M','T','W','T','F','S'].forEach(d=>{const el=document.createElement('div');el.className='cll';el.textContent=d;grid.appendChild(el);});
   const first=new Date(sY,sM,1),last=new Date(sY,sM+1,0);
   for(let i=0;i<first.getDay();i++){const el=document.createElement('div');el.className='cc om';el.textContent=new Date(sY,sM,-first.getDay()+i+1).getDate();grid.appendChild(el);}
-  for(let d=1;d<=last.getDate();d++){const dt=new Date(sY,sM,d),k=dk(dt);const en=getEntry(curSub,k);const has=en.log||(parseFloat(en.hours)||0)>0||en.goals.length>0;
-    const el=document.createElement('div');el.className='cc';if(dt.toDateString()===TODAY.toDateString())el.classList.add('today');if(k===sSelDk)el.classList.add('sel');if(has)el.classList.add('dot');el.textContent=d;el.onclick=()=>openSE(dt,k);grid.appendChild(el);}
+  const topics = getSubTopics(curSub);
+  for(let d=1;d<=last.getDate();d++){
+    const dt=new Date(sY,sM,d),k=dk(dt);
+    const en=getEntry(curSub,k);
+    const topicsOnDate = topics.filter(t => t.date === k);
+    const has=en.log||(parseFloat(en.hours)||0)>0||en.goals.length>0||topicsOnDate.length>0;
+    const el=document.createElement('div');el.className='cc';
+    if(dt.toDateString()===TODAY.toDateString())el.classList.add('today');
+    if(k===sSelDk)el.classList.add('sel');
+    if(has)el.classList.add('dot');
+    el.textContent=d;el.onclick=()=>openSE(dt,k);
+    grid.appendChild(el);
+  }
 }
 function scm(dir){sM+=dir;if(sM>11){sM=0;sY++;}if(sM<0){sM=11;sY--;}buildSCal();}
 let seLog=false;
@@ -1790,9 +2054,19 @@ function renderEP(dt,k){
   else{lh=`<div class="log-mt">// no log entry</div>${ip?`<button class="btn bg bs" style="margin-top:7px;" onclick="seLog=true;renderEP(new Date('${k}T00:00:00'),'${k}')">+ write log</button>`:''}` ;}
   const gis=(en.goals||[]).map((g,i)=>{let cc='',tc='',pl='';if(g.status==='done'){cc='done';tc='s';pl='<span class="pill pd">done</span>';}else if(g.status==='missed'){cc='missed';tc='s';pl='<span class="pill pm">missed</span>';}else{pl=dt<TODAY?'<span class="pill pm">missed</span>':'<span class="pill pp">pending</span>';}return `<div class="gi ${g.status||''}"><div class="gc ${cc}" onclick="cycleG('${k}',${i})">${cc==='done'?'✓':cc==='missed'?'✕':''}</div><span class="gt ${tc}">${g.name}</span>${pl}${ip?`<button class="del-btn" onclick="delG('${k}',${i})">✕</button>`:''}</div>`;}).join('');
   const lis=(en.links||[]).map((l,i)=>`<div class="li"><a href="${l.url}" target="_blank">${l.label||l.url}</a><button class="del-btn" onclick="delL('${k}',${i})">✕</button></div>`).join('');
+  
+  const topicsOnDate = getSubTopics(curSub).filter(t => t.date === k);
+  const topicLinksHtml = topicsOnDate.map(t => 
+    `<div class="li" style="margin-bottom:5px;background:var(--gd2);border:1px solid rgba(0,255,163,.25);">
+      <span style="flex:1;cursor:pointer;color:var(--g);font-weight:600;" onclick="switchSubTab('notes');openSubTopic('${t.id}')">📖 ${t.title || 'Untitled Topic'}</span>
+      <button class="btn bg bs" style="padding:2px 6px;font-size:9.5px;color:var(--g);border-color:rgba(0,255,163,.3);" onclick="switchSubTab('notes');openSubTopic('${t.id}')">View Notes ➔</button>
+     </div>`
+  ).join('');
+
   p.innerHTML=`<div class="ep"><div class="ep-date">// ${fmtD(dt)}</div>
     <div class="eps"><div class="eps-title">study log</div>${lh}${ip?`<div class="hrow"><label>hours:</label><input type="number" id="hrs-inp" value="${en.hours||''}" min="0" max="24" step="0.25" placeholder="0"/><button class="btn bp bs" onclick="saveHrs('${k}')">save</button></div>`:'<div class="tmuted" style="margin-top:6px;font-size:10px;">// future date</div>'}</div>
     <div class="eps"><div class="eps-title">goals &amp; topics</div><div id="gw">${gis||'<div class="tmuted">// no goals planned</div>'}</div><div class="irow" style="margin-top:7px;"><input type="text" id="ng-inp" placeholder="add goal or topic..."/><button class="btn bp bs" onclick="addG('${k}')" style="white-space:nowrap;">+ add</button></div></div>
+    <div class="eps"><div class="eps-title">📖 class topic notes (${topicsOnDate.length})</div><div id="ctw">${topicLinksHtml||'<div class="tmuted">// no class topic notes linked to this date</div>'}</div><div style="margin-top:7px;"><button class="btn bp bs" onclick="newSubTopic('${k}')">+ Link New Class Topic Note</button></div></div>
     <div class="eps"><div class="eps-title">reference links</div><div id="lw">${lis||'<div class="tmuted">// no links saved</div>'}</div><div class="larow" style="margin-top:7px;"><input type="text" id="ll-inp" placeholder="label"/><input type="url" id="lu-inp" placeholder="https://..."/><button class="btn bp bs" onclick="addL('${k}')" style="white-space:nowrap;">+ add</button></div></div>
   </div>`;
   setTimeout(()=>{const gi=document.getElementById('ng-inp');if(gi)gi.addEventListener('keydown',e=>{if(e.key==='Enter')addG(k);});},0);
